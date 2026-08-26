@@ -118,3 +118,5 @@ corrido sobre `--brand-cream`/`--brand-beige`.
 2. Configure no painel da Vercel as mesmas variáveis do `.env.local` (`ADMIN_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, os `GOOGLE_*` e os `NEXT_PUBLIC_BRAND_*` que você tiver preenchido).
 3. `GOOGLE_OAUTH_REDIRECT_URI` em produção precisa ser a URL do domínio final — e essa mesma URL tem que estar registrada no OAuth Client do Google.
 4. Deploy.
+
+[Deploy automático a cada push na `main`, via Vercel.]
