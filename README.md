@@ -120,3 +120,5 @@ corrido sobre `--brand-cream`/`--brand-beige`.
 4. Deploy.
 
 [Deploy automático a cada push na `main`, via Vercel.]
+
+<!-- teste de deploy automatico -->
