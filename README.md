@@ -31,8 +31,9 @@ npm install
 ### 2. Criar um projeto no Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) — na conta do cliente.
-2. No **SQL Editor**, rode o conteúdo de [`supabase/setup.sql`](supabase/setup.sql). É o schema completo (schema base + todas as migrations, na ordem), pensado pra um banco **vazio**. Não traz dado nenhum além das cinco colunas padrão do backlog.
-   - Pra atualizar um banco que já existe, não use o `setup.sql`: rode só as migrations novas de [`supabase/migrations/`](supabase/migrations), na ordem numérica, a partir da última já aplicada.
+2. No **SQL Editor**, rode o conteúdo de [`supabase/setup.sql`](supabase/setup.sql). É o schema completo já no estado final, pensado pra um banco **vazio**. Não traz dado nenhum além das cinco colunas padrão do backlog.
+   - Não rode os arquivos de [`supabase/migrations/`](supabase/migrations) num banco novo — eles só servem pra atualizar um banco antigo, e alguns falham quando o schema já está no estado final (a `0013`, por exemplo, renomeia uma coluna que o `setup.sql` já cria com o nome novo).
+   - Pra atualizar um banco que já existe, aí sim: rode só as migrations posteriores à última já aplicada, na ordem numérica.
 3. Em **Storage**, crie um bucket público chamado `guide-references` (usado para as imagens de referência visual enviadas por upload).
 4. Em **Project Settings > API**, copie a **Project URL** e a **service_role key**.
 
