@@ -80,7 +80,7 @@ Admins podem criar outros usuários (admin ou membro) pela própria interface, e
 npm run dev
 ```
 
-Abra [http://localhost:3000/admin](http://localhost:3000/admin) e entre com o usuário/senha criados no passo anterior.
+Abra [http://localhost:3100/admin](http://localhost:3100/admin) e entre com o usuário/senha criados no passo anterior.
 
 ## Como funciona
 

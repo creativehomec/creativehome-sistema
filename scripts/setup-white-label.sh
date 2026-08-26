@@ -74,13 +74,13 @@ Opcional — pule com Enter se o cliente não usa galeria via Drive nem agenda.
   2. APIs & Services > Library > ative "Google Drive API" e "Google Calendar API".
   3. Credentials > Create credentials > OAuth client ID > Web application.
   4. Authorized redirect URIs: adicione uma entrada por ambiente, ex:
-       http://localhost:3000/api/drive/oauth/callback
+       http://localhost:3100/api/drive/oauth/callback
        https://SEU-DOMINIO/api/drive/oauth/callback
 TXT
 pause
 ask GOOGLE_ID "GOOGLE_CLIENT_ID" ""
 ask GOOGLE_SECRET "GOOGLE_CLIENT_SECRET" ""
-ask GOOGLE_REDIRECT "GOOGLE_OAUTH_REDIRECT_URI" "http://localhost:3000/api/drive/oauth/callback"
+ask GOOGLE_REDIRECT "GOOGLE_OAUTH_REDIRECT_URI" "http://localhost:3100/api/drive/oauth/callback"
 
 # ------------------------------------------------------------------ 4. env
 step "4/6 — Escrevendo .env.local"
