@@ -8,6 +8,13 @@
  * Valores podem vir do ambiente pra permitir a mesma build servir marcas
  * diferentes; o fallback é o que está escrito aqui.
  */
+function withProtocol(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 export const brand = {
   /** Nome curto, usado no logo, cabeçalhos e rodapés. */
   name: process.env.NEXT_PUBLIC_BRAND_NAME ?? "CreativeHome",
@@ -20,8 +27,11 @@ export const brand = {
   description:
     process.env.NEXT_PUBLIC_BRAND_DESCRIPTION ??
     "Guias de gravação: roteiros, referências e checklist por projeto.",
-  /** Link de contato exibido no orçamento público e no PDF. */
-  contactUrl: process.env.NEXT_PUBLIC_BRAND_CONTACT_URL ?? "",
+  /**
+   * Link de contato exibido no orçamento público e no PDF. Sem protocolo o
+   * href vira relativo e o link quebra, então normaliza aqui.
+   */
+  contactUrl: withProtocol(process.env.NEXT_PUBLIC_BRAND_CONTACT_URL ?? ""),
   /**
    * Fonte de display da página pública de orçamento. Deixe vazio pra usar a
    * fonte padrão do sistema; pra usar uma fonte própria, coloque o arquivo em
