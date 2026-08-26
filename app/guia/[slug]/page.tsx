@@ -1,0 +1,471 @@
+import { notFound } from "next/navigation";
+import {
+  toggleCardItemSelectedAction,
+  togglePhotoItemSelectedAction,
+  toggleSceneRecordedAction,
+  toggleVisualReferenceSelectedAction,
+} from "./actions";
+import { getGuideBySlugWithSections } from "@/lib/guides";
+import { isLikelyImageUrl } from "@/lib/references";
+import { BrandLogo } from "@/components/BrandLogo";
+import { LightboxImage } from "@/components/LightboxImage";
+import { Accordion } from "@/components/Accordion";
+
+function isShowableAsImage(item: { source_url: string | null; image_url: string }) {
+  return Boolean(item.source_url) || isLikelyImageUrl(item.image_url);
+}
+
+export const dynamic = "force-dynamic";
+
+type Params = Promise<{ slug: string }>;
+
+function formatDate(value: string | null) {
+  if (!value) return null;
+  return new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export default async function PublicGuidePage({
+  params,
+}: {
+  params: Params;
+}) {
+  const { slug } = await params;
+  const guide = await getGuideBySlugWithSections(slug);
+
+  if (!guide) notFound();
+
+  if (guide.status !== "published") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4 text-center">
+        <p className="text-sm text-neutral-500">
+          Este guia ainda não foi publicado.
+        </p>
+      </div>
+    );
+  }
+
+  const equipamento = guide.checklist_items.filter(
+    (item) => item.category === "equipamento"
+  );
+  const locacao = guide.checklist_items.filter(
+    (item) => item.category === "locacao"
+  );
+
+  return (
+    <div className="min-h-screen bg-neutral-50">
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <header className="mb-10 border-b border-neutral-200 pb-6">
+          <BrandLogo className="mx-auto mb-10 block h-9 w-auto text-black" />
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-400">
+            Guia de gravação
+          </p>
+          <h1 className="mb-2 text-2xl font-semibold text-neutral-900">
+            {guide.title}
+          </h1>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-neutral-500">
+            {guide.client_name ? <span>Cliente: {guide.client_name}</span> : null}
+            {formatDate(guide.shoot_date) ? (
+              <span>Data: {formatDate(guide.shoot_date)}</span>
+            ) : null}
+            {guide.location ? <span>Local: {guide.location}</span> : null}
+          </div>
+          <a
+            href={`/api/guias/${guide.slug}/pdf`}
+            className="mt-4 inline-block rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+          >
+            Baixar PDF
+          </a>
+        </header>
+
+        {guide.videos.length > 0 ? (
+          <section className="mb-10">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-900">
+              Vídeos
+            </h2>
+            <div className="space-y-3">
+              {guide.videos.map((video, videoIndex) => {
+                const videoCompleted =
+                  video.scenes.length > 0 &&
+                  video.scenes.every((scene) => scene.recorded);
+
+                return (
+                <Accordion
+                  key={video.id}
+                  className="rounded-lg border border-neutral-300 bg-white"
+                  summary={
+                    <span className="flex items-center gap-2 p-4 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                      {videoCompleted ? (
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-600 text-[10px] text-white">
+                          ✓
+                        </span>
+                      ) : null}
+                      Vídeo {videoIndex + 1}
+                      {video.title ? ` — ${video.title}` : ""}
+                    </span>
+                  }
+                >
+                  <div className="space-y-4 border-t border-neutral-200 p-4">
+                    {video.scenes.map((scene, sceneIndex) => {
+                      const sceneReferences = guide.visual_references.filter(
+                        (reference) => reference.scene_id === scene.id
+                      );
+                      return (
+                        <div
+                          key={scene.id}
+                          className={`rounded-md border p-3 ${
+                            scene.recorded
+                              ? "border-green-300 bg-green-50"
+                              : "border-neutral-200 bg-neutral-50"
+                          }`}
+                        >
+                          <div className="mb-1 flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium text-neutral-900">
+                              Cena {sceneIndex + 1}
+                            </p>
+                            <form action={toggleSceneRecordedAction}>
+                              <input type="hidden" name="id" value={scene.id} />
+                              <input type="hidden" name="slug" value={guide.slug} />
+                              <input
+                                type="hidden"
+                                name="recorded"
+                                value={(!scene.recorded).toString()}
+                              />
+                              <button
+                                type="submit"
+                                className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium ${
+                                  scene.recorded
+                                    ? "border-green-300 bg-green-100 text-green-700"
+                                    : "border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-100"
+                                }`}
+                              >
+                                <span
+                                  className={`flex h-4 w-4 items-center justify-center rounded border ${
+                                    scene.recorded
+                                      ? "border-green-600 bg-green-600 text-white"
+                                      : "border-neutral-300"
+                                  }`}
+                                >
+                                  {scene.recorded ? "✓" : ""}
+                                </span>
+                                {scene.recorded ? "Gravada" : "Gravar"}
+                              </button>
+                            </form>
+                          </div>
+                          <p className="whitespace-pre-wrap text-sm text-neutral-600">
+                            {scene.script || "—"}
+                          </p>
+
+                          {scene.description ? (
+                            <div className="mt-2">
+                              <p className="text-xs font-medium text-neutral-500">
+                                Descrição de cena
+                              </p>
+                              <p className="whitespace-pre-wrap text-sm text-neutral-600">
+                                {scene.description}
+                              </p>
+                            </div>
+                          ) : null}
+
+                          {sceneReferences.length > 0 ? (
+                            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                              {(() => {
+                                const imageReferences = sceneReferences.filter(
+                                  isShowableAsImage
+                                );
+                                const gallery = imageReferences.map((r) => ({
+                                  id: r.id,
+                                  src: r.image_url,
+                                  alt: r.caption || "Referência visual",
+                                  sourceUrl: r.source_url,
+                                  selected: r.selected,
+                                }));
+
+                                return sceneReferences.map((reference) => {
+                                const showAsImage = isShowableAsImage(reference);
+                                const href =
+                                  reference.source_url ?? reference.image_url;
+
+                                return (
+                                <figure
+                                  key={reference.id}
+                                  className="overflow-hidden rounded-md border border-neutral-200 bg-white"
+                                >
+                                  {showAsImage ? (
+                                    <LightboxImage
+                                      id={reference.id}
+                                      src={reference.image_url}
+                                      alt={
+                                        reference.caption ||
+                                        "Referência visual"
+                                      }
+                                      sourceUrl={reference.source_url}
+                                      selected={reference.selected}
+                                      className="h-28 w-full object-cover"
+                                      gallery={gallery}
+                                      index={imageReferences.findIndex(
+                                        (r) => r.id === reference.id
+                                      )}
+                                      onToggleSelected={toggleVisualReferenceSelectedAction.bind(
+                                        null,
+                                        guide.slug
+                                      )}
+                                    />
+                                  ) : (
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="flex h-28 w-full items-center justify-center bg-neutral-100 px-2 text-center text-xs font-medium text-neutral-600 underline"
+                                    >
+                                      Abrir link ↗
+                                    </a>
+                                  )}
+                                  {reference.caption ? (
+                                    <figcaption className="p-1.5 text-xs text-neutral-500">
+                                      {reference.caption}
+                                    </figcaption>
+                                  ) : null}
+                                </figure>
+                                );
+                                });
+                              })()}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Accordion>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {guide.photo_items.length > 0 ? (
+          <section className="mb-10">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-900">
+              Fotos
+            </h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {(() => {
+                const imagePhotos = guide.photo_items.filter(isShowableAsImage);
+                const gallery = imagePhotos.map((i) => ({
+                  id: i.id,
+                  src: i.image_url,
+                  alt: i.caption || "Foto",
+                  sourceUrl: i.source_url,
+                  selected: i.selected,
+                }));
+
+                return guide.photo_items.map((item) => {
+                const showAsImage = isShowableAsImage(item);
+                const href = item.source_url ?? item.image_url;
+
+                return (
+                  <figure
+                    key={item.id}
+                    className="overflow-hidden rounded-md border border-neutral-200 bg-white"
+                  >
+                    {showAsImage ? (
+                      <LightboxImage
+                        id={item.id}
+                        src={item.image_url}
+                        alt={item.caption || "Foto"}
+                        sourceUrl={item.source_url}
+                        selected={item.selected}
+                        className="h-32 w-full object-cover"
+                        gallery={gallery}
+                        index={imagePhotos.findIndex((i) => i.id === item.id)}
+                        onToggleSelected={togglePhotoItemSelectedAction.bind(
+                          null,
+                          guide.slug
+                        )}
+                      />
+                    ) : (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex h-32 w-full items-center justify-center bg-neutral-100 px-2 text-center text-xs font-medium text-neutral-600 underline"
+                      >
+                        Abrir link ↗
+                      </a>
+                    )}
+                    {item.caption ? (
+                      <figcaption className="p-1.5 text-xs text-neutral-500">
+                        {item.caption}
+                      </figcaption>
+                    ) : null}
+                  </figure>
+                );
+                });
+              })()}
+            </div>
+          </section>
+        ) : null}
+
+        {guide.card_items.length > 0 ? (
+          <section className="mb-10">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-900">
+              Cards
+            </h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {(() => {
+                const imageCards = guide.card_items.filter(isShowableAsImage);
+                const gallery = imageCards.map((i) => ({
+                  id: i.id,
+                  src: i.image_url,
+                  alt: i.caption || "Card",
+                  sourceUrl: i.source_url,
+                  selected: i.selected,
+                }));
+
+                return guide.card_items.map((item) => {
+                const showAsImage = isShowableAsImage(item);
+                const href = item.source_url ?? item.image_url;
+
+                return (
+                  <figure
+                    key={item.id}
+                    className="overflow-hidden rounded-md border border-neutral-200 bg-white"
+                  >
+                    {showAsImage ? (
+                      <LightboxImage
+                        id={item.id}
+                        src={item.image_url}
+                        alt={item.caption || "Card"}
+                        sourceUrl={item.source_url}
+                        selected={item.selected}
+                        className="h-32 w-full object-cover"
+                        gallery={gallery}
+                        index={imageCards.findIndex((i) => i.id === item.id)}
+                        onToggleSelected={toggleCardItemSelectedAction.bind(
+                          null,
+                          guide.slug
+                        )}
+                      />
+                    ) : (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex h-32 w-full items-center justify-center bg-neutral-100 px-2 text-center text-xs font-medium text-neutral-600 underline"
+                      >
+                        Abrir link ↗
+                      </a>
+                    )}
+                    {item.caption ? (
+                      <figcaption className="p-1.5 text-xs text-neutral-500">
+                        {item.caption}
+                      </figcaption>
+                    ) : null}
+                  </figure>
+                );
+                });
+              })()}
+            </div>
+          </section>
+        ) : null}
+
+        {guide.shot_list_items.length > 0 ? (
+          <section className="mb-10">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-900">
+              Shot list / decupagem
+            </h2>
+            <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-neutral-100 text-xs uppercase text-neutral-500">
+                  <tr>
+                    <th className="px-3 py-2">#</th>
+                    <th className="px-3 py-2">Plano</th>
+                    <th className="px-3 py-2">Tipo</th>
+                    <th className="px-3 py-2">Duração</th>
+                    <th className="px-3 py-2">Observações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {guide.shot_list_items.map((item, index) => (
+                    <tr key={item.id} className="border-t border-neutral-200">
+                      <td className="px-3 py-2 text-neutral-400">
+                        {index + 1}
+                      </td>
+                      <td className="px-3 py-2 text-neutral-900">
+                        {item.description}
+                      </td>
+                      <td className="px-3 py-2 text-neutral-600">
+                        {item.shot_type || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-neutral-600">
+                        {item.duration || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-neutral-600">
+                        {item.notes || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        {equipamento.length > 0 || locacao.length > 0 ? (
+          <section className="mb-10">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-900">
+              Checklist
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {equipamento.length > 0 ? (
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Equipamento
+                  </h3>
+                  <ul className="space-y-1 text-sm">
+                    {equipamento.map((item) => (
+                      <li
+                        key={item.id}
+                        className={
+                          item.done
+                            ? "text-neutral-400 line-through"
+                            : "text-neutral-800"
+                        }
+                      >
+                        {item.done ? "✓" : "○"} {item.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {locacao.length > 0 ? (
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Locação
+                  </h3>
+                  <ul className="space-y-1 text-sm">
+                    {locacao.map((item) => (
+                      <li
+                        key={item.id}
+                        className={
+                          item.done
+                            ? "text-neutral-400 line-through"
+                            : "text-neutral-800"
+                        }
+                      >
+                        {item.done ? "✓" : "○"} {item.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </div>
+  );
+}

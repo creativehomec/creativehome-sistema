@@ -1,0 +1,398 @@
+import { notFound } from "next/navigation";
+import { getBudgetBySlugWithSections } from "@/lib/budgets";
+import { PACKAGE_WHATSAPP_URL } from "@/lib/budgetCalc";
+import { isLikelyImageUrl } from "@/lib/references";
+import { BrandLogo } from "@/components/BrandLogo";
+import { brandDisplayFontFamily, brandGeneratedBy } from "@/lib/brand";
+import { Accordion } from "@/components/Accordion";
+import { LightboxImage } from "@/components/LightboxImage";
+import { Reveal, RevealStagger, RevealItem } from "@/components/Reveal";
+import { ScrollHint } from "@/components/ScrollHint";
+
+export const dynamic = "force-dynamic";
+
+type Params = Promise<{ slug: string }>;
+
+function money(n: number) {
+  return "R$ " + (Number(n) || 0).toLocaleString("pt-BR", {
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * As cores de fundo dos blocos (seções full-width) são sempre uma destas
+ * duas — nunca outra cor — alternando conforme os blocos aparecem na
+ * página: #838059 (olive, texto claro) e #DBD5CA (bege claro, texto
+ * escuro). O índice pula seções que não são renderizadas (ex: "Sobre"
+ * vazio) pra manter a alternação visual mesmo quando uma proposta não usa
+ * todas as seções.
+ */
+function blockTone(index: number) {
+  const isDark = index % 2 === 0;
+  return {
+    isDark,
+    bg: isDark ? "bg-[var(--brand-olive)]" : "bg-[var(--brand-beige)]",
+    text: isDark ? "text-[var(--brand-cream)]" : "text-[var(--brand-ink)]",
+    textMuted: isDark ? "text-[var(--brand-cream)]/75" : "text-[var(--brand-ink)]/70",
+    divider: isDark ? "border-[var(--brand-cream)]/20" : "border-[var(--brand-ink)]/15",
+    iconBorder: isDark ? "border-[var(--brand-cream)]/30" : "border-[var(--brand-olive)]/40",
+    iconColor: isDark ? "text-[var(--brand-cream)]" : "text-[var(--brand-olive)]",
+  };
+}
+
+function HeroBackground({ url }: { url: string }) {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  if (/\.mp4($|\?)/i.test(trimmed)) {
+    return (
+      <video
+        className="absolute inset-0 h-full w-full object-cover opacity-40"
+        autoPlay
+        muted
+        loop
+        playsInline
+        src={trimmed}
+      />
+    );
+  }
+
+  const yt = trimmed.match(
+    /(?:youtu\.be\/|youtube\.com\/watch\?v=|youtube\.com\/embed\/)([\w-]+)/
+  );
+  const vm = trimmed.match(/vimeo\.com\/(\d+)/);
+
+  let embed = "";
+  if (yt) {
+    embed = `https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1&loop=1&playlist=${yt[1]}&controls=0&showinfo=0`;
+  } else if (vm) {
+    embed = `https://player.vimeo.com/video/${vm[1]}?autoplay=1&muted=1&loop=1&background=1`;
+  }
+
+  if (!embed) return null;
+
+  return (
+    <iframe
+      className="absolute inset-0 h-full w-full opacity-40"
+      src={embed}
+      frameBorder={0}
+      allow="autoplay"
+      title="Vídeo de fundo"
+    />
+  );
+}
+
+export default async function PublicBudgetPage({
+  params,
+}: {
+  params: Params;
+}) {
+  const { slug } = await params;
+  const budget = await getBudgetBySlugWithSections(slug);
+
+  if (!budget) notFound();
+
+  if (budget.status !== "published") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--brand-beige)] px-4 text-center">
+        <p className="text-sm text-[var(--brand-ink)]/70">
+          Este orçamento ainda não foi publicado.
+        </p>
+      </div>
+    );
+  }
+
+  const highlights = budget.highlights;
+  const references = budget.references;
+  const packages = budget.packages;
+  const faq = budget.faq;
+  const hasHeroStatement = Boolean(budget.hero_title1 || budget.hero_title2);
+  const hasAbout =
+    Boolean(budget.about_title || budget.about_text) || hasHeroStatement;
+  const hasVideo = Boolean(budget.hero_bg_video_url.trim());
+
+  // Bloco 0 é sempre o hero (sempre escuro/olive). Os próximos índices só
+  // avançam para seções que de fato existem, pra alternância continuar
+  // certa mesmo quando alguma seção está vazia.
+  let blockIndex = 0;
+  const heroTone = blockTone(blockIndex);
+  const aboutTone = hasAbout ? blockTone((blockIndex += 1)) : null;
+  const highlightsTone =
+    highlights.length > 0 ? blockTone((blockIndex += 1)) : null;
+  const referencesTone =
+    references.length > 0 ? blockTone((blockIndex += 1)) : null;
+  const packagesTone =
+    packages.length > 0 ? blockTone((blockIndex += 1)) : null;
+  const faqTone = faq.length > 0 ? blockTone((blockIndex += 1)) : null;
+  const footerTone = blockTone(blockIndex + 1);
+
+  return (
+    <div className="min-h-screen">
+      <section
+        className={`relative flex min-h-[100dvh] flex-col overflow-hidden px-4 py-8 sm:px-8 sm:py-10 ${heroTone.bg} ${heroTone.text}`}
+      >
+        <HeroBackground url={budget.hero_bg_video_url} />
+        {hasVideo ? <div className="absolute inset-0 bg-black/50" /> : null}
+        <div className="relative mx-auto w-full max-w-3xl">
+          <BrandLogo className="mx-auto block h-8 w-auto" />
+        </div>
+        <div className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center">
+          {budget.hero_eyebrow ? (
+            <p className="mb-4 text-xs font-bold uppercase tracking-widest">
+              {budget.hero_eyebrow}
+            </p>
+          ) : null}
+          <h1
+            style={{ fontFamily: brandDisplayFontFamily }}
+            className="mb-6 text-4xl leading-tight tracking-wide sm:text-6xl"
+          >
+            {budget.client_name || budget.hero_title1}
+          </h1>
+          {budget.hero_subtitle ? (
+            <p className={`mb-8 max-w-lg text-base ${heroTone.textMuted}`}>
+              {budget.hero_subtitle}
+            </p>
+          ) : null}
+          {packages.length > 0 ? (
+            <a
+              href="#pacotes"
+              className="inline-block w-fit rounded-md bg-[var(--brand-ink)] px-6 py-3 text-sm font-bold text-[var(--brand-cream)]"
+            >
+              {budget.hero_cta || "Conhecer a proposta"}
+            </a>
+          ) : null}
+        </div>
+        <ScrollHint className={heroTone.text} />
+      </section>
+
+      {hasAbout && aboutTone ? (
+        <section className={`px-4 py-16 sm:px-8 ${aboutTone.bg} ${aboutTone.text}`}>
+          <Reveal className="mx-auto max-w-3xl">
+            {hasHeroStatement ? (
+              <p
+                style={{ fontFamily: brandDisplayFontFamily }}
+                className="mb-10 text-3xl leading-snug tracking-[0.03em] sm:text-5xl"
+              >
+                {budget.hero_title1}
+                <br />
+                {budget.hero_title2}
+              </p>
+            ) : null}
+            {budget.about_title ? (
+              <h2 className="mb-4 text-2xl font-bold sm:text-3xl">
+                {budget.about_title}
+              </h2>
+            ) : null}
+            {budget.about_text ? (
+              <p
+                className={`max-w-xl whitespace-pre-wrap text-base leading-relaxed ${aboutTone.textMuted}`}
+              >
+                {budget.about_text}
+              </p>
+            ) : null}
+          </Reveal>
+        </section>
+      ) : null}
+
+      {highlights.length > 0 && highlightsTone ? (
+        <section
+          className={`px-4 py-16 sm:px-8 ${highlightsTone.bg} ${highlightsTone.text}`}
+        >
+          <div className="mx-auto max-w-3xl">
+            {budget.highlights_title ? (
+              <Reveal>
+                <h2 className="mb-10 text-2xl font-bold sm:text-3xl">
+                  {budget.highlights_title}
+                </h2>
+              </Reveal>
+            ) : null}
+            <RevealStagger className="grid gap-8 sm:grid-cols-2">
+              {highlights.map((item, index) => (
+                <RevealItem key={item.id}>
+                  <div className="mb-3 flex items-center gap-2">
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm ${highlightsTone.iconBorder} ${highlightsTone.iconColor}`}
+                    >
+                      ✦
+                    </div>
+                    <span className={`text-xs ${highlightsTone.textMuted}`}>
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <p className="max-w-sm text-lg font-bold leading-snug">
+                    {item.title}
+                  </p>
+                </RevealItem>
+              ))}
+            </RevealStagger>
+          </div>
+        </section>
+      ) : null}
+
+      {references.length > 0 && referencesTone ? (
+        <section
+          className={`px-4 py-16 sm:px-8 ${referencesTone.bg} ${referencesTone.text}`}
+        >
+          <div className="mx-auto max-w-5xl">
+            <Reveal>
+              <h2 className="mb-10 text-2xl font-bold sm:text-3xl">
+                Referências
+              </h2>
+            </Reveal>
+            <RevealStagger className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {(() => {
+                const imageReferences = references.filter(
+                  (item) =>
+                    Boolean(item.source_url) || isLikelyImageUrl(item.image_url)
+                );
+                const gallery = imageReferences.map((item) => ({
+                  id: item.id,
+                  src: item.image_url,
+                  alt: item.caption || "Referência",
+                  sourceUrl: item.source_url,
+                }));
+
+                return references.map((item) => {
+                  const showAsImage =
+                    Boolean(item.source_url) || isLikelyImageUrl(item.image_url);
+                  const href = item.source_url ?? item.image_url;
+
+                  return (
+                    <RevealItem key={item.id} className="overflow-hidden rounded-xl">
+                      {showAsImage ? (
+                        <LightboxImage
+                          id={item.id}
+                          src={item.image_url}
+                          alt={item.caption || "Referência"}
+                          sourceUrl={item.source_url}
+                          className="h-40 w-full object-cover sm:h-48"
+                          gallery={gallery}
+                          index={imageReferences.findIndex((r) => r.id === item.id)}
+                        />
+                      ) : (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex h-40 w-full items-center justify-center bg-[var(--brand-cream)] px-2 text-center text-xs font-medium text-[var(--brand-ink)] underline sm:h-48"
+                        >
+                          Abrir link ↗
+                        </a>
+                      )}
+                      {item.caption ? (
+                        <p className={`mt-2 text-xs ${referencesTone.textMuted}`}>
+                          {item.caption}
+                        </p>
+                      ) : null}
+                    </RevealItem>
+                  );
+                });
+              })()}
+            </RevealStagger>
+          </div>
+        </section>
+      ) : null}
+
+      {packages.length > 0 && packagesTone ? (
+        <section
+          id="pacotes"
+          className={`px-4 py-16 sm:px-8 ${packagesTone.bg} ${packagesTone.text}`}
+        >
+          <Reveal>
+            <h2 className="mb-10 text-center text-2xl font-bold sm:text-3xl">
+              Três formatos. Uma decisão de posicionamento.
+            </h2>
+          </Reveal>
+          <RevealStagger className="mx-auto grid max-w-5xl gap-5 sm:grid-cols-3">
+            {packages.map((pkg) => {
+              const isHighlighted = Boolean(pkg.tag);
+              const features = pkg.features
+                .split("\n")
+                .map((f) => f.trim())
+                .filter(Boolean);
+
+              return (
+                <RevealItem
+                  key={pkg.id}
+                  className={`relative flex flex-col rounded-2xl bg-[var(--brand-cream)] p-7 text-[var(--brand-ink)] ${
+                    isHighlighted
+                      ? "border-[1.5px] border-[var(--brand-olive)]"
+                      : "border border-[var(--brand-taupe)]"
+                  }`}
+                >
+                  {pkg.tag ? (
+                    <div className="absolute -top-3 left-6 rounded-md bg-[var(--brand-ink)] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--brand-cream)]">
+                      {pkg.tag}
+                    </div>
+                  ) : null}
+                  <p className="mb-2 text-lg font-semibold">{pkg.name}</p>
+                  <p className="mb-5 text-2xl font-bold">
+                    {money(pkg.price)}
+                    <span className="text-sm font-medium text-[var(--brand-ink)]/60">
+                      /mês
+                    </span>
+                  </p>
+                  <ul className="mb-6 flex-1 space-y-2">
+                    {features.map((feature, i) => (
+                      <li
+                        key={i}
+                        className="border-t border-[var(--brand-taupe)] pt-2 text-sm text-[var(--brand-ink)]/75"
+                      >
+                        — {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href={PACKAGE_WHATSAPP_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`block rounded-md py-2.5 text-center text-sm font-bold ${
+                      isHighlighted
+                        ? "bg-[var(--brand-ink)] text-[var(--brand-cream)]"
+                        : "border border-[var(--brand-ink)]/40 text-[var(--brand-ink)] hover:bg-[var(--brand-taupe)]/30"
+                    }`}
+                  >
+                    Escolher {pkg.name}
+                  </a>
+                </RevealItem>
+              );
+            })}
+          </RevealStagger>
+        </section>
+      ) : null}
+
+      {faq.length > 0 && faqTone ? (
+        <section className={`px-4 py-16 sm:px-8 ${faqTone.bg} ${faqTone.text}`}>
+          <Reveal className="mx-auto max-w-3xl">
+            <h2 className="mb-8 text-center text-2xl font-bold sm:text-3xl">
+              Perguntas frequentes
+            </h2>
+            <div>
+              {faq.map((item) => (
+                <Accordion
+                  key={item.id}
+                  className={`border-b ${faqTone.divider}`}
+                  buttonClassName="py-4"
+                  summary={
+                    <span className="text-sm font-semibold">{item.question}</span>
+                  }
+                >
+                  <p className={`pb-4 text-sm leading-relaxed ${faqTone.textMuted}`}>
+                    {item.answer}
+                  </p>
+                </Accordion>
+              ))}
+            </div>
+          </Reveal>
+        </section>
+      ) : null}
+
+      <footer
+        className={`flex flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs sm:px-8 ${footerTone.bg} ${footerTone.text}`}
+      >
+        <span className="font-medium">{budget.client_name}</span>
+        <span className="font-medium">{brandGeneratedBy}</span>
+      </footer>
+    </div>
+  );
+}
