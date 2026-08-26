@@ -570,3 +570,16 @@ create index if not exists backlog_card_events_user_id_idx
 -- eventos que ela aponta pertencem à conta singleton antiga e serão apagados
 -- por lá. Removê-la é assunto de uma migration posterior, depois que a
 -- transição estiver de pé em produção.
+
+-- ===================== colunas iniciais do backlog =====================
+-- Vinham da migration 0022. O `where not exists` deixa o statement
+-- idempotente: num quadro que já tem colunas, não insere nada.
+insert into backlog_columns (name, color, position)
+select * from (values
+  ('Ideia', '#6b7280', 0),
+  ('Captado', '#0ea5e9', 1),
+  ('Editado', '#8b5cf6', 2),
+  ('Aprovação', '#f59e0b', 3),
+  ('Postado', '#10b981', 4)
+) as seed(name, color, position)
+where not exists (select 1 from backlog_columns);
