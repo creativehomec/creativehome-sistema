@@ -122,3 +122,5 @@ corrido sobre `--brand-cream`/`--brand-beige`.
 [Deploy automático a cada push na `main`, via Vercel.]
 
 <!-- teste de deploy automatico -->
+
+<!-- committer corrigido -->
