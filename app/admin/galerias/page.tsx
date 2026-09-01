@@ -50,7 +50,8 @@ export default async function GalleryClientsPage({
         </p>
       ) : null}
 
-      <section className="mb-6 rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="rounded-lg border border-neutral-200 bg-white">
+      <section className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-neutral-900">
@@ -89,7 +90,7 @@ export default async function GalleryClientsPage({
 
       <form
         action={createGalleryClientAction}
-        className="mb-8 flex gap-2 rounded-lg border border-neutral-200 bg-white p-4"
+        className="flex gap-2 border-t border-neutral-200 p-4"
       >
         <input
           name="name"
@@ -106,15 +107,15 @@ export default async function GalleryClientsPage({
       </form>
 
       {clients.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="border-t border-neutral-200 p-4 text-sm text-neutral-500">
           Nenhum cliente cadastrado ainda. Use o formulário acima para começar.
         </p>
       ) : (
-        <ul className="grid gap-3 lg:grid-cols-2">
+        <ul className="grid gap-3 border-t border-neutral-200 p-4 lg:grid-cols-2">
           {clients.map((client) => (
             <li
               key={client.id}
-              className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4"
+              className="flex items-center justify-between rounded-md border border-neutral-200 p-4"
             >
               <div>
                 <Link
@@ -154,6 +155,7 @@ export default async function GalleryClientsPage({
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }

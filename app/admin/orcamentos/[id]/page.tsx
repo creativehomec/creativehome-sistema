@@ -31,6 +31,7 @@ export default async function BudgetEditPage({ params }: { params: Params }) {
         trail={[
           { label: "Admin", href: "/admin" },
           { label: "Orçamentos", href: "/admin/orcamentos" },
+          { label: budget.title },
         ]}
         username={username}
       />

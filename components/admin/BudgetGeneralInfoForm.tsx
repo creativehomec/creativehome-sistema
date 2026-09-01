@@ -7,7 +7,7 @@ export function BudgetGeneralInfoForm({
   budget: BudgetWithSections;
 }) {
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-4">
+    <section className="rounded-lg bg-white p-4 shadow-sm">
       <form action={updateBudgetInfoAction} className="space-y-6">
         <input type="hidden" name="id" value={budget.id} />
 

@@ -114,7 +114,10 @@ export function AgendaFrame({
       </AnimatePresence>
 
       <div className="min-w-0 flex-1">
-        <div className="mb-3 flex flex-wrap items-center gap-3">
+        {/* Fundo branco translúcido: os controles aqui (ícones, links,
+            título) assumem fundo branco e ficavam ilegíveis direto no
+            gradiente do body. */}
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-white/90 p-3 backdrop-blur-sm">
           <button
             type="button"
             onClick={() => setHidden(open)}

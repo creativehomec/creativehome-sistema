@@ -153,11 +153,18 @@ export default async function MinhaAgendaPage({
       ) : null}
 
       {account ? null : (
-        <CalendarConnection
-          connected={false}
-          email={null}
-          cardCount={cardCount}
-        />
+        <div className="rounded-lg border border-neutral-200 bg-white">
+          <CalendarConnection
+            connected={false}
+            email={null}
+            cardCount={cardCount}
+          />
+          <p className="border-t border-neutral-200 p-4 text-xs text-neutral-500">
+            Cada pessoa conecta a própria conta: sua agenda não interfere na
+            de ninguém, e desconectar aqui não afeta as galerias dos
+            clientes.
+          </p>
+        </div>
       )}
 
       {account ? (
@@ -260,10 +267,12 @@ export default async function MinhaAgendaPage({
         </section>
       ) : null}
 
-      <p className="mt-4 text-xs text-neutral-400">
-        Cada pessoa conecta a própria conta: sua agenda não interfere na de
-        ninguém, e desconectar aqui não afeta as galerias dos clientes.
-      </p>
+      {account ? (
+        <p className="mt-4 inline-block rounded-md bg-white/80 px-3 py-1.5 text-xs text-neutral-500 backdrop-blur-sm">
+          Cada pessoa conecta a própria conta: sua agenda não interfere na de
+          ninguém, e desconectar aqui não afeta as galerias dos clientes.
+        </p>
+      ) : null}
     </div>
   );
 }

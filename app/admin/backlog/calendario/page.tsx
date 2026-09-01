@@ -34,7 +34,7 @@ export default async function BacklogCalendarPage() {
         username={username}
       />
 
-      <div className="mb-4 flex items-center gap-2 text-sm">
+      <div className="mb-4 flex items-center gap-2 rounded-lg bg-white p-2 text-sm shadow-sm">
         <Link
           href="/admin/backlog"
           className="rounded-md border border-neutral-300 px-3 py-1.5 text-neutral-700 hover:bg-neutral-50"

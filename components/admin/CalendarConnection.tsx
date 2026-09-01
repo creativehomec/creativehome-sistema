@@ -62,7 +62,7 @@ export function CalendarConnection({
 
   if (!connected) {
     return (
-      <div className="rounded-lg border border-neutral-200 bg-white p-5">
+      <div className="p-5">
         <h2 className="text-sm font-medium text-neutral-900">
           Conectar minha agenda
         </h2>

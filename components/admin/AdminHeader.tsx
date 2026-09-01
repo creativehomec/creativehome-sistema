@@ -48,17 +48,22 @@ export async function AdminHeader({
       <Link
         href="/admin"
         aria-label="Ir para o Painel"
-        className={`mx-auto mb-4 block w-fit rounded ${FOCUS_RING}`}
+        className={`mx-auto mb-4 block w-fit rounded-lg px-4 py-2 ${FOCUS_RING}`}
       >
-        <BrandLogo className="block h-[30px] w-auto text-black" />
+        <BrandLogo className="block h-[30px] w-auto text-white" />
       </Link>
 
-      {/* Trilha e ações ficam na chrome, acima da linha; o título respira
-          embaixo dela. */}
-      <div className="flex items-center justify-between gap-4 border-b border-neutral-200 pb-3">
-        <div className="min-w-0">
+      {/* Trilha, ações e título ficam sobre o gradiente marrom do body, então
+          herdam a mesma superfície branca translúcida do logo acima — as
+          cores neutral-* do resto do app assumem fundo branco (ver
+          globals.css) e ficavam ilegíveis direto no gradiente. */}
+      <div className="rounded-lg bg-white/90 px-4 py-3 backdrop-blur-sm">
+        {/* Trilha (ou título, sem trilha) e ações na mesma linha, mesmo eixo
+            Y — com trilha, ela já diz onde a pessoa está, então o h1
+            repetindo o mesmo nome embaixo só ocupava espaço. */}
+        <div className="flex items-center justify-between gap-4">
           {trail?.length ? (
-            <nav aria-label="Breadcrumb">
+            <nav aria-label="Breadcrumb" className="min-w-0">
               <ol className="flex flex-wrap items-center gap-1 text-[13px]">
                 {trail.map((item, index) => (
                   <li key={item.label} className="flex items-center gap-1">
@@ -87,37 +92,37 @@ export async function AdminHeader({
                 ))}
               </ol>
             </nav>
-          ) : null}
-        </div>
+          ) : (
+            <h1 className="min-w-0 truncate text-xl leading-tight font-semibold tracking-tight text-neutral-900">
+              {title}
+            </h1>
+          )}
 
-        <div className="flex shrink-0 items-center gap-3">
-          {username ? (
-            <span className="text-sm text-neutral-500">{username}</span>
-          ) : null}
-          {session ? (
-            <NotificationBell
-              notifications={notifications}
-              unreadCount={unreadCount}
-            />
-          ) : null}
-          {/* Borda pra separar do nome ao lado: sem ela os dois eram o mesmo
-              cinza e nada dizia qual era clicável. Sem confirmação de
-              propósito — deslogar é reversível, e diálogo em ação reversível
-              treina a pessoa a clicar sem ler. */}
-          <form action={logout}>
-            <button
-              type="submit"
-              className={`flex items-center rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 transition-transform hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
-            >
-              Sair
-            </button>
-          </form>
+          <div className="flex shrink-0 items-center gap-3">
+            {username ? (
+              <span className="text-sm text-neutral-500">{username}</span>
+            ) : null}
+            {session ? (
+              <NotificationBell
+                notifications={notifications}
+                unreadCount={unreadCount}
+              />
+            ) : null}
+            {/* Borda pra separar do nome ao lado: sem ela os dois eram o mesmo
+                cinza e nada dizia qual era clicável. Sem confirmação de
+                propósito — deslogar é reversível, e diálogo em ação reversível
+                treina a pessoa a clicar sem ler. */}
+            <form action={logout}>
+              <button
+                type="submit"
+                className={`flex items-center rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 transition-transform hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
+              >
+                Sair
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-
-      <h1 className="mt-5 text-xl leading-tight font-semibold tracking-tight text-neutral-900">
-        {title}
-      </h1>
     </header>
   );
 }

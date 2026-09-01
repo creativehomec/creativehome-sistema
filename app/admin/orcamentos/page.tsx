@@ -25,9 +25,10 @@ export default async function BudgetsDashboard() {
         username={username}
       />
 
+      <div className="rounded-lg border border-neutral-200 bg-white">
       <form
         action={createBudgetAction}
-        className="mb-8 flex gap-2 rounded-lg border border-neutral-200 bg-white p-4"
+        className="flex gap-2 p-4"
       >
         <input
           name="title"
@@ -44,15 +45,15 @@ export default async function BudgetsDashboard() {
       </form>
 
       {budgets.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="border-t border-neutral-200 p-4 text-sm text-neutral-500">
           Nenhum orçamento criado ainda. Use o formulário acima para começar.
         </p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-neutral-200 border-t border-neutral-200">
           {budgets.map((budget) => (
             <li
               key={budget.id}
-              className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4"
+              className="flex items-center justify-between p-4"
             >
               <div>
                 <Link
@@ -93,6 +94,7 @@ export default async function BudgetsDashboard() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }

@@ -87,8 +87,8 @@ function CardBody({
 
   return (
     <div
-      className={`rounded-md border bg-white shadow-sm ${
-        approved ? "border-emerald-300" : "border-neutral-200"
+      className={`rounded-md bg-white shadow-sm ${
+        approved ? "border border-emerald-300" : ""
       }`}
     >
       {card.cover_url ? (
@@ -245,7 +245,7 @@ function BoardSettingsMenu() {
           <button
             type="button"
             aria-label="Configurações do quadro"
-            className="flex size-9 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 hover:bg-neutral-50"
+            className="flex size-9 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50"
           >
             ⚙
           </button>
@@ -455,7 +455,7 @@ function SortableColumn({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`w-72 shrink-0 rounded-lg border border-neutral-200 bg-neutral-50 p-3 ${
+      className={`w-72 shrink-0 rounded-lg bg-neutral-50 p-3 ${
         isDragging ? "opacity-50" : ""
       }`}
       {...attributes}
@@ -708,9 +708,11 @@ export function Board({
       {interacting ? <span hidden data-live-pause /> : null}
       <BacklogToaster />
 
-      {/* Abas, filtro e configurações do quadro na mesma linha — a barra
-          branca separada só criava um vão vazio no meio. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      {/* Abas, filtro e configurações do quadro numa barra só, em vez de
+          botões soltos direto no fundo da página. O contraste vem do
+          preenchimento branco contra o gradiente atrás, não de uma borda —
+          uma linha cinza ali só duplicava a separação que o fundo já dá. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg bg-white p-2 shadow-sm">
         <div>{tabs}</div>
         <div className="ml-auto flex items-center gap-2">
           <BacklogFilters

@@ -679,7 +679,8 @@ export function Calendar({ board }: { board: BacklogBoard }) {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveCardId(null)}
     >
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white p-3">
+      <div className="mb-4 rounded-lg bg-white shadow-sm">
+      <div className="flex flex-wrap items-center gap-2 p-3">
         {view === "month" ? (
           <>
             <button
@@ -803,12 +804,12 @@ export function Calendar({ board }: { board: BacklogBoard }) {
         />
       </div>
 
-      <p className="hidden text-sm text-neutral-500 sm:block">
+      <p className="hidden border-t border-neutral-200 p-3 text-sm text-neutral-500 sm:block">
         Arraste um material pra outro dia pra mudar a data de post, ou solte no
         menu &quot;Sem data&quot; pra tirar a data.
       </p>
 
-      <ul className="mb-3 mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+      <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-neutral-200 p-3">
         {board.columns.map((column) => (
           <li
             key={column.id}
@@ -823,6 +824,7 @@ export function Calendar({ board }: { board: BacklogBoard }) {
           </li>
         ))}
       </ul>
+      </div>
 
       <div className="w-full min-w-0 max-w-full overflow-x-auto">
         {/* No celular o mês cabe inteiro (células menores); as vistas de hora

@@ -28,7 +28,7 @@ export function BudgetFreelaCalculator({ budgetId }: { budgetId: string }) {
   });
 
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-4">
+    <section className="rounded-lg bg-white p-4 shadow-sm">
       <h2 className="mb-1 text-sm font-semibold text-neutral-900">
         Calculadora — job avulso / freela
       </h2>

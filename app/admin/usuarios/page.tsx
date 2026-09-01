@@ -43,7 +43,8 @@ export default async function UsersPage() {
         username={currentUsername}
       />
 
-      <section className="mb-8 rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="rounded-lg border border-neutral-200 bg-white">
+      <section className="p-4">
         <h2 className="mb-3 text-sm font-semibold text-neutral-900">
           Convidar alguém
         </h2>
@@ -106,12 +107,13 @@ export default async function UsersPage() {
         ) : null}
       </section>
 
+      <div className="border-t border-neutral-200 p-4">
       <h2 className="mb-3 text-sm font-semibold text-neutral-900">
         Ou criar direto (você define a senha)
       </h2>
       <form
         action={createUserAction}
-        className="mb-8 flex flex-wrap items-end gap-2 rounded-lg border border-neutral-200 bg-white p-4"
+        className="flex flex-wrap items-end gap-2"
       >
         <div className="flex-1">
           <label className="mb-1 block text-xs font-medium text-neutral-600">
@@ -165,12 +167,13 @@ export default async function UsersPage() {
           Adicionar usuário
         </button>
       </form>
+      </div>
 
-      <ul className="space-y-3">
+      <ul className="divide-y divide-neutral-200 border-t border-neutral-200">
         {users.map((user) => (
           <li
             key={user.id}
-            className="rounded-lg border border-neutral-200 bg-white p-4"
+            className="p-4"
           >
             <form
               action={updateUserAction}
@@ -248,6 +251,7 @@ export default async function UsersPage() {
           </li>
         ))}
       </ul>
+      </div>
     </div>
   );
 }

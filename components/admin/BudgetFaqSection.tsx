@@ -51,7 +51,7 @@ export function BudgetFaqSection({
   items: BudgetFaq[];
 }) {
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-4">
+    <section className="rounded-lg bg-white p-4 shadow-sm">
       <h2 className="mb-3 text-sm font-semibold text-neutral-900">
         Perguntas frequentes
       </h2>

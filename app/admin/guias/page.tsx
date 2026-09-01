@@ -89,9 +89,10 @@ export default async function AdminDashboard({
         username={username}
       />
 
+      <div className="rounded-lg border border-neutral-200 bg-white">
       <form
         action={createGuideAction}
-        className="mb-6 flex gap-2 rounded-lg border border-neutral-200 bg-white p-4"
+        className="flex gap-2 p-4"
       >
         <input
           name="title"
@@ -109,7 +110,7 @@ export default async function AdminDashboard({
 
       <form
         method="get"
-        className="mb-8 flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4"
+        className="flex flex-wrap items-end gap-3 border-t border-neutral-200 p-4"
       >
         <div>
           <label className="mb-1 block text-xs font-medium text-neutral-600">
@@ -192,6 +193,7 @@ export default async function AdminDashboard({
         ) : null}
       </form>
 
+      <div className="border-t border-neutral-200 p-4">
       {filteredGuides.length === 0 ? (
         <p className="text-sm text-neutral-500">
           {guides.length === 0
@@ -203,7 +205,7 @@ export default async function AdminDashboard({
           {filteredGuides.map((guide) => (
             <li
               key={guide.id}
-              className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4"
+              className="flex items-center justify-between rounded-md border border-neutral-200 p-4"
             >
               <div>
                 <Link
@@ -256,6 +258,8 @@ export default async function AdminDashboard({
           ))}
         </ul>
       )}
+      </div>
+      </div>
     </div>
   );
 }

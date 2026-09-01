@@ -41,6 +41,7 @@ export default async function GuideEditPage({
         trail={[
           { label: "Admin", href: "/admin" },
           { label: "Guias", href: "/admin/guias" },
+          { label: guide.title },
         ]}
         username={username}
       />

@@ -322,8 +322,8 @@ export function LibraryBrowser({ links }: { links: LibraryLink[] }) {
   const hasFilters = query.trim().length > 0 || activeTags.length > 0;
 
   return (
-    <>
-      <div className="mb-6 flex flex-wrap items-center gap-2">
+    <div className="rounded-lg border border-neutral-200 bg-white">
+      <div className="flex flex-wrap items-center gap-2 p-4">
         <div className="relative min-w-56 flex-1">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" />
           <input
@@ -366,7 +366,7 @@ export function LibraryBrowser({ links }: { links: LibraryLink[] }) {
       </div>
 
       {allTags.length > 0 ? (
-        <div className="mb-6 flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-neutral-200 p-4">
           {allTags.map((tag) => {
             const active = activeTags.includes(tagKey(tag));
             return (
@@ -389,7 +389,7 @@ export function LibraryBrowser({ links }: { links: LibraryLink[] }) {
             <button
               type="button"
               onClick={() => setActiveTags([])}
-              className="px-2 py-1 text-xs text-neutral-500 hover:text-neutral-900"
+              className="rounded-full px-2 py-1 text-xs text-neutral-500 hover:text-neutral-900"
             >
               Limpar tags
             </button>
@@ -398,19 +398,19 @@ export function LibraryBrowser({ links }: { links: LibraryLink[] }) {
       ) : null}
 
       {visible.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="border-t border-neutral-200 p-4 text-sm text-neutral-500">
           {links.length === 0
             ? "Nenhum link cadastrado ainda. Use “Adicionar link” para começar."
             : "Nenhum link encontrado com essa busca."}
         </p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid gap-3 border-t border-neutral-200 p-4 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((link) => {
             const host = linkHost(link.url);
             return (
               <li
                 key={link.id}
-                className={`group relative flex flex-col rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:border-neutral-300 ${
+                className={`group relative flex flex-col rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-300 ${
                   pending ? "opacity-60" : ""
                 }`}
               >
@@ -488,7 +488,7 @@ export function LibraryBrowser({ links }: { links: LibraryLink[] }) {
       )}
 
       {hasFilters && visible.length > 0 ? (
-        <p className="mt-4 text-xs text-neutral-500">
+        <p className="border-t border-neutral-200 p-4 text-xs text-neutral-500">
           {visible.length} de {links.length} links
         </p>
       ) : null}
@@ -532,6 +532,6 @@ export function LibraryBrowser({ links }: { links: LibraryLink[] }) {
           </DialogContent>
         </Dialog>
       ) : null}
-    </>
+    </div>
   );
 }

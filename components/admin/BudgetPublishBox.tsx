@@ -6,7 +6,7 @@ export function BudgetPublishBox({ budget }: { budget: BudgetWithSections }) {
   const publicPath = `/orcamento/${budget.slug}`;
 
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-4">
+    <section className="rounded-lg bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-neutral-900">

@@ -109,6 +109,7 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
         trail={[
           { label: "Admin", href: "/admin" },
           { label: "Galerias", href: "/admin/galerias" },
+          { label: client.name },
         ]}
         username={username}
       />
@@ -116,7 +117,7 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
       <div className="mb-6 space-y-4">
         <form
           action={updateGalleryClientNameAction}
-          className="flex gap-2 rounded-lg border border-neutral-200 bg-white p-4"
+          className="flex gap-2 rounded-lg bg-white p-4 shadow-sm"
         >
           <input type="hidden" name="id" value={client.id} />
           <input
@@ -133,7 +134,7 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
           </button>
         </form>
 
-        <section className="rounded-lg border border-neutral-200 bg-white p-4">
+        <section className="rounded-lg bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-neutral-900">
@@ -178,7 +179,7 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
         </section>
       </div>
 
-      <section className="mb-6 rounded-lg border border-neutral-200 bg-white p-4">
+      <section className="mb-6 rounded-lg bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-neutral-900">
           Pasta do Google Drive
         </h2>
@@ -233,7 +234,7 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
         )}
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-4">
+      <section className="rounded-lg bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-neutral-900">
             Arquivos importados
