@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { login, signup } from "./actions";
+import { signup } from "./actions";
 import { BrandLogo } from "@/components/BrandLogo";
+import LoginForm from "./LoginForm";
 
 type SearchParams = Promise<{
   error?: string;
@@ -117,55 +118,7 @@ export default async function LoginPage({
             </p>
           </form>
         ) : (
-          <form action={login} className="space-y-4">
-            <input type="hidden" name="next" value={next} />
-            <div>
-              <label htmlFor="username" className={LABEL_CLASS}>
-                Usuário
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                autoFocus
-                className={INPUT_CLASS}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className={LABEL_CLASS}>
-                Senha
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className={INPUT_CLASS}
-              />
-            </div>
-
-            {errorMessage ? (
-              <p className="text-sm text-red-600">{errorMessage}</p>
-            ) : null}
-
-            <button
-              type="submit"
-              className="w-full rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-            >
-              Entrar
-            </button>
-
-            <p className="text-center text-sm text-neutral-500">
-              Não tem conta?{" "}
-              <Link
-                href={`/admin/login?mode=signup&next=${encodeURIComponent(next)}`}
-                className="font-medium text-neutral-900 underline"
-              >
-                Criar conta
-              </Link>
-            </p>
-          </form>
+          <LoginForm next={next} errorMessage={errorMessage} />
         )}
       </div>
     </div>
