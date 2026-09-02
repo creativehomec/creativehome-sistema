@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Home } from "lucide-react";
 import Link from "next/link";
 import { logout } from "@/app/admin/login/actions";
 import { LiveRefresh } from "@/components/admin/LiveRefresh";
@@ -23,10 +23,17 @@ export async function AdminHeader({
   title,
   trail,
   username,
+  dense = false,
 }: {
   title: string;
   trail?: BreadcrumbItem[];
   username?: string | null;
+  /**
+   * Versão baixa do cabeçalho, pra tela que é ferramenta e não documento: o
+   * título sai (a trilha já nomeia a página) e a folga encolhe, porque cada
+   * faixa aqui em cima é faixa a menos pra área de trabalho no celular.
+   */
+  dense?: boolean;
 }) {
   // A campainha é buscada aqui, e não em cada página, pra aparecer igual em
   // todo o admin sem repetir a consulta em dez lugares.
@@ -37,6 +44,36 @@ export async function AdminHeader({
         countUnreadNotifications(session.userId),
       ])
     : [[], 0];
+
+  if (dense) {
+    return (
+      <header className="mb-3">
+        <LiveRefresh />
+        <div className="flex items-center justify-center gap-4">
+          <Link
+            href="/admin"
+            aria-label="Ir para o Painel"
+            className={`grid size-10 place-items-center rounded-md text-neutral-600 transition-transform hover:bg-neutral-100 hover:text-neutral-900 active:scale-95 ${FOCUS_RING}`}
+          >
+            <Home aria-hidden="true" className="size-5" />
+          </Link>
+
+          <BrandLogo className="block h-[26px] w-auto text-black" />
+
+          <form action={logout}>
+            <button
+              type="submit"
+              className={`flex h-10 items-center rounded-md border border-neutral-300 px-3 text-sm text-neutral-600 transition-transform hover:bg-neutral-50 hover:text-neutral-900 active:scale-95 ${FOCUS_RING}`}
+            >
+              Sair
+            </button>
+          </form>
+        </div>
+        {/* O nome da tela continua para quem usa leitor de tela. */}
+        <h1 className="sr-only">{title}</h1>
+      </header>
+    );
+  }
 
   return (
     <header className="mb-8">
