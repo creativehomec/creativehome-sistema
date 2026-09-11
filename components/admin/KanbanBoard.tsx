@@ -1050,6 +1050,16 @@ export function KanbanBoard({
   // faria o card saltar de volta.
   const interacting = Boolean(activeCardId || openCardId || editingCardId);
 
+  // Borda esmaecida só do lado que ainda esconde coluna, pra sinalizar que dá
+  // pra rolar. É máscara no próprio rolador, não uma tira colorida por cima: o
+  // fundo da página é um gradiente, e qualquer cor sólida ali aparecia como
+  // risco claro em vez de sumir nele.
+  const mascara = `linear-gradient(to right, ${
+    scrollLeft > 1 ? "transparent" : "black"
+  }, black 2.5rem, black calc(100% - 2.5rem), ${
+    scrollLeft < maxScroll - 1 ? "transparent" : "black"
+  })`;
+
   return (
     <>
       {interacting ? <span hidden data-live-pause /> : null}
@@ -1098,44 +1108,34 @@ export function KanbanBoard({
           items={columns.map((column) => column.id)}
           strategy={horizontalListSortingStrategy}
         >
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            {/* Fades nas bordas: só aparecem do lado que ainda tem coluna
-                escondida, pra sinalizar que dá pra rolar. */}
-            {scrollLeft > 1 ? (
-              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-background to-transparent" />
-            ) : null}
-            {scrollLeft < maxScroll - 1 ? (
-              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" />
-            ) : null}
-
-            <div
-              ref={scrollerRef}
-              onScroll={syncScroll}
-              onWheel={(event) => {
-                // Mouse comum só manda deltaY: sem isto, a roda não rolaria
-                // o quadro em lugar nenhum. Trackpad (deltaX) segue nativo.
-                const element = scrollerRef.current;
-                if (!element || event.deltaX !== 0 || event.deltaY === 0) return;
-                element.scrollLeft += event.deltaY;
-              }}
-              // Barra nativa escondida: quem rola é o slider no fim da página.
-              className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {columns.map((column) => (
-                <SortableColumn
-                  key={column.id}
-                  column={column}
-                  cards={columnCards(column.id, visibleCards)}
-                  clients={board.clients}
-                  clientNameById={clientNameById}
-                  assigneeNameById={assigneeNameById}
-                  checklistItems={board.checklist}
-                  draggable={!filtering}
-                  onOpenCard={setOpenCardId}
-                  onDuplicateCard={handleDuplicate}
-                />
-              ))}
-            </div>
+          <div
+            ref={scrollerRef}
+            onScroll={syncScroll}
+            onWheel={(event) => {
+              // Mouse comum só manda deltaY: sem isto, a roda não rolaria
+              // o quadro em lugar nenhum. Trackpad (deltaX) segue nativo.
+              const element = scrollerRef.current;
+              if (!element || event.deltaX !== 0 || event.deltaY === 0) return;
+              element.scrollLeft += event.deltaY;
+            }}
+            style={{ maskImage: mascara, WebkitMaskImage: mascara }}
+            // Barra nativa escondida: quem rola é o slider no fim da página.
+            className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {columns.map((column) => (
+              <SortableColumn
+                key={column.id}
+                column={column}
+                cards={columnCards(column.id, visibleCards)}
+                clients={board.clients}
+                clientNameById={clientNameById}
+                assigneeNameById={assigneeNameById}
+                checklistItems={board.checklist}
+                draggable={!filtering}
+                onOpenCard={setOpenCardId}
+                onDuplicateCard={handleDuplicate}
+              />
+            ))}
           </div>
         </SortableContext>
 
