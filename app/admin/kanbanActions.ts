@@ -2,8 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/lib/session";
-import { BACKUP_QUESTION } from "@/lib/backlogTypes";
 import {
+  BACKUP_QUESTION,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_QUESTION,
+  formatBacklogDateShort,
+  normalizeBacklogBoard,
+  normalizePaymentMethod,
+  type BacklogPrompt,
+} from "@/lib/backlogTypes";
+import {
+  backlogBoardPath,
   createBacklogActivity,
   createBacklogCard,
   createBacklogChecklistItem,
@@ -11,6 +20,7 @@ import {
   deleteBacklogCard,
   deleteBacklogChecklistItem,
   deleteBacklogColumn,
+  duplicateBacklogCard,
   getBacklogCardBrief,
   renameBacklogChecklistItem,
   setBacklogChecklistItemDone,
@@ -18,6 +28,8 @@ import {
   readBacklogCardInput,
   reorderBacklogColumns,
   setBacklogCardApproved,
+  setBacklogCardColumn,
+  setBacklogCardPayment,
   setBacklogCardPostDate,
   setBacklogCardSchedule,
   updateBacklogCard,
@@ -29,10 +41,16 @@ import {
   syncBacklogCardToCalendar,
 } from "@/lib/googleCalendar";
 
-const BACKLOG_PATHS = ["/admin/backlog", "/admin/backlog/calendario"];
+const KANBAN_PATHS = [
+  "/admin/backlog",
+  "/admin/backlog/calendario",
+  "/admin/clientes/entregas",
+  "/admin/clientes/faturamento",
+  "/admin/clientes/resumo",
+];
 
 function revalidateBacklog() {
-  for (const path of BACKLOG_PATHS) revalidatePath(path);
+  for (const path of KANBAN_PATHS) revalidatePath(path);
 }
 
 /**
@@ -49,12 +67,38 @@ async function syncCalendar(cardId: string) {
   }
 }
 
+/** Um card aceita vários responsáveis; todos recebem o mesmo aviso. */
+async function notifyAssignees(params: {
+  userIds: string[];
+  actorId: string | null;
+  kind?: "card_assigned" | "card_moved" | "card_approved";
+  title: string;
+  body: string;
+  link: string;
+  entityId: string;
+}) {
+  await Promise.all(
+    params.userIds.map((userId) =>
+      notifyUser({
+        userId,
+        actorId: params.actorId,
+        kind: params.kind ?? "card_assigned",
+        title: params.title,
+        body: params.body,
+        link: params.link,
+        entityId: params.entityId,
+      })
+    )
+  );
+}
+
 // ---------------------------------------------------------------- colunas
 
 export async function createBacklogColumnAction(formData: FormData) {
   await createBacklogColumn({
     name: String(formData.get("name") ?? ""),
     color: String(formData.get("color") ?? "#6b7280"),
+    board: normalizeBacklogBoard(formData.get("board")),
   });
   revalidateBacklog();
 }
@@ -63,6 +107,14 @@ export async function updateBacklogColumnAction(formData: FormData) {
   await updateBacklogColumn(String(formData.get("id")), {
     name: String(formData.get("name") ?? ""),
     color: String(formData.get("color") ?? "#6b7280"),
+    // O checkbox só existe no quadro de entregas; nos outros o campo some do
+    // FormData e a flag fica como está.
+    billable: formData.has("billable_present")
+      ? formData.get("billable") === "on"
+      : undefined,
+    paid: formData.has("billable_present")
+      ? formData.get("paid") === "on"
+      : undefined,
   });
   revalidateBacklog();
 }
@@ -84,13 +136,13 @@ export async function createBacklogCardAction(formData: FormData) {
   const input = readBacklogCardInput(formData);
   const session = await getCurrentSession();
   const card = await createBacklogCard(columnId, input);
-  await notifyUser({
-    userId: input.assignee_id,
+  const { board } = await getBacklogCardBrief(card.id);
+  await notifyAssignees({
+    userIds: input.assignee_ids,
     actorId: session?.userId ?? null,
-    kind: "card_assigned",
     title: "Novo material atribuído a você",
     body: card.title,
-    link: "/admin/backlog",
+    link: backlogBoardPath(board),
     entityId: card.id,
   });
   await syncCalendar(card.id);
@@ -102,17 +154,21 @@ export async function updateBacklogCardAction(formData: FormData) {
   const input = readBacklogCardInput(formData);
   // Só avisa quando o responsável muda — salvar o card de novo com a mesma
   // pessoa não deve reaparecer como novidade na campainha.
-  const { assigneeId: previousAssigneeId } = await getBacklogCardBrief(id);
+  const { assigneeIds: previousAssigneeIds, board } = await getBacklogCardBrief(id);
   await updateBacklogCard(id, input);
-  if (input.assignee_id !== previousAssigneeId) {
+  // Só quem entrou agora recebe aviso: quem já era responsável não deve ver a
+  // mesma novidade de novo a cada vez que alguém salva o card.
+  const novos = input.assignee_ids.filter(
+    (userId) => !previousAssigneeIds.includes(userId)
+  );
+  if (novos.length > 0) {
     const session = await getCurrentSession();
-    await notifyUser({
-      userId: input.assignee_id,
+    await notifyAssignees({
+      userIds: novos,
       actorId: session?.userId ?? null,
-      kind: "card_assigned",
       title: "Material atribuído a você",
       body: input.title || "Novo material",
-      link: "/admin/backlog",
+      link: backlogBoardPath(board),
       entityId: id,
     });
   }
@@ -124,25 +180,74 @@ export async function moveBacklogCardAction(params: {
   cardId: string;
   toColumnId: string;
   orderedIdsByColumn: Record<string, string[]>;
-}): Promise<{ question: string | null }> {
+}): Promise<{ prompt: BacklogPrompt | null }> {
   const session = await getCurrentSession();
   const result = await moveBacklogCard({
     ...params,
     authorId: session?.userId ?? null,
   });
   if (result.moved) {
-    await notifyUser({
-      userId: result.moved.assigneeId,
+    const { board } = await getBacklogCardBrief(params.cardId);
+    await notifyAssignees({
+      userIds: result.moved.assigneeIds,
       actorId: session?.userId ?? null,
       kind: "card_moved",
       title: `Material movido para "${result.moved.toName}"`,
       body: result.moved.title,
-      link: "/admin/backlog",
+      link: backlogBoardPath(board),
       entityId: params.cardId,
     });
   }
   revalidateBacklog();
-  return { question: result.question };
+  return { prompt: result.prompt };
+}
+
+/**
+ * Resposta da pergunta de pagamento. Pago: carimba data e forma e o card fica
+ * onde foi solto. Não pago: limpa o carimbo e devolve o card para a coluna de
+ * espera — quem entrega antes de receber não pode ficar contando como recebido.
+ */
+export async function answerPaymentQuestionAction(params: {
+  cardId: string;
+  paid: boolean;
+  waitingColumnId: string;
+  paidAt: string | null;
+  paymentMethod: string | null;
+}) {
+  const session = await getCurrentSession();
+  const method = normalizePaymentMethod(params.paymentMethod);
+
+  await setBacklogCardPayment({
+    cardId: params.cardId,
+    paidAt: params.paid ? params.paidAt : null,
+    paymentMethod: params.paid ? method : null,
+  });
+
+  if (!params.paid) {
+    await setBacklogCardColumn({
+      cardId: params.cardId,
+      columnId: params.waitingColumnId,
+    });
+  }
+
+  await createBacklogActivity({
+    cardId: params.cardId,
+    authorId: session?.userId ?? null,
+    kind: "answer",
+    message: params.paid
+      ? `${PAYMENT_QUESTION} Sim${
+          method ? ` — ${PAYMENT_METHOD_LABELS[method]}` : ""
+        }${params.paidAt ? `, em ${formatBacklogDateShort(params.paidAt)}` : ""}`
+      : `${PAYMENT_QUESTION} Ainda não`,
+  });
+
+  revalidateBacklog();
+}
+
+export async function duplicateBacklogCardAction(cardId: string) {
+  const copy = await duplicateBacklogCard(cardId);
+  await syncCalendar(copy.id);
+  revalidateBacklog();
 }
 
 export async function setBacklogCardApprovedAction(
@@ -162,13 +267,13 @@ export async function setBacklogCardApprovedAction(
     message: approved ? "Marcou como aprovado" : "Desmarcou a aprovação",
   });
   const brief = await getBacklogCardBrief(cardId);
-  await notifyUser({
-    userId: brief.assigneeId,
+  await notifyAssignees({
+    userIds: brief.assigneeIds,
     actorId: session?.userId ?? null,
     kind: "card_approved",
     title: approved ? "Material aprovado" : "Aprovação removida",
     body: brief.title,
-    link: "/admin/backlog",
+    link: backlogBoardPath(brief.board),
     entityId: cardId,
   });
   revalidateBacklog();

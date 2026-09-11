@@ -17,7 +17,13 @@ import {
   type BacklogCard,
   type BacklogChecklistItem,
 } from "@/lib/backlogTypes";
-import { createBacklogNoteAction } from "@/app/admin/backlog/actions";
+import { formatBRL, lineTotalCents } from "@/lib/billingTypes";
+import {
+  CONTRACT_TYPE_LABELS,
+  PAYMENT_METHOD_LABELS,
+  formatBacklogDateShort,
+} from "@/lib/backlogTypes";
+import { createBacklogNoteAction } from "@/app/admin/kanbanActions";
 
 function formatDate(iso: string): string {
   const [year, month, day] = iso.split("-");
@@ -36,14 +42,23 @@ function formatDateTime(iso: string): string {
 function Field({
   label,
   children,
+  numeric = false,
 }: {
   label: string;
   children: React.ReactNode;
+  /** Valores em dinheiro em fonte tabular, pra os dígitos não dançarem. */
+  numeric?: boolean;
 }) {
   return (
     <div>
       <p className="text-xs font-medium text-neutral-500">{label}</p>
-      <div className="mt-0.5 text-sm text-neutral-900">{children}</div>
+      <div
+        className={`mt-0.5 text-sm text-neutral-900 ${
+          numeric ? "tabular-nums" : ""
+        }`}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -59,10 +74,11 @@ export function BacklogCardView({
   columnName,
   columnColor,
   clientName,
-  assigneeName,
+  assigneeNames,
   guideTitle,
   authorNameById,
   canComment,
+  showBilling = false,
   onClose,
   onEdit,
 }: {
@@ -72,11 +88,13 @@ export function BacklogCardView({
   columnName: string;
   columnColor: string;
   clientName: string | null;
-  assigneeName: string | null;
+  assigneeNames: string[];
   guideTitle: string | null;
   authorNameById: Map<string, string>;
   /** Comentário só é liberado fora da primeira coluna, como no drawer. */
   canComment: boolean;
+  /** Cobrança e vocabulário de entrega só valem no quadro de clientes. */
+  showBilling?: boolean;
   onClose: () => void;
   onEdit: () => void;
 }) {
@@ -141,10 +159,12 @@ export function BacklogCardView({
           <div className="flex flex-col gap-4 sm:min-h-0 sm:overflow-y-auto sm:pr-2">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Cliente">{clientName ?? "—"}</Field>
-            <Field label="Responsável">
-              {assigneeName ? `@${assigneeName}` : "—"}
+            <Field label={assigneeNames.length > 1 ? "Responsáveis" : "Responsável"}>
+              {assigneeNames.length > 0
+                ? assigneeNames.map((name) => `@${name}`).join(", ")
+                : "—"}
             </Field>
-            <Field label="Data de post">
+            <Field label={showBilling ? "Data da entrega" : "Data de post"}>
               {card.post_date ? formatDate(card.post_date) : "Sem data"}
             </Field>
             <Field label="Horário">
@@ -157,6 +177,36 @@ export function BacklogCardView({
           <Field label="Onde foi feito o backup">
             {card.backup_location ?? "—"}
           </Field>
+
+          {card.unit_price_cents !== null ? (
+            <Field label="Cobrança" numeric>
+              {card.quantity} × {formatBRL(card.unit_price_cents)} ={" "}
+              <strong>{formatBRL(lineTotalCents(card))}</strong>
+            </Field>
+          ) : null}
+
+          {showBilling && card.contract_type ? (
+            <Field label="Contrato">
+              {CONTRACT_TYPE_LABELS[card.contract_type]}
+            </Field>
+          ) : null}
+
+          {showBilling ? (
+            <Field label="Pagamento">
+              {card.paid_at || card.payment_method
+                ? [
+                    card.paid_at
+                      ? `Pago em ${formatBacklogDateShort(card.paid_at)}`
+                      : "Pago",
+                    card.payment_method
+                      ? PAYMENT_METHOD_LABELS[card.payment_method]
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : "Ainda não recebido"}
+            </Field>
+          ) : null}
 
           <Field label="Guia de captação">{guideTitle ?? "—"}</Field>
 

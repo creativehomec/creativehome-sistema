@@ -2,6 +2,10 @@
 // `lib/backlog.ts` porque aquele é "server-only" (acessa o Supabase com a
 // service role) e não pode ser importado por componentes de cliente.
 
+import type { ServiceOption } from "@/lib/billingTypes";
+
+export type { ServiceOption };
+
 export const BACKLOG_FORMATS = ["reel", "carrossel", "foto", "story"] as const;
 export type BacklogFormat = (typeof BACKLOG_FORMATS)[number];
 
@@ -23,11 +27,27 @@ export const BACKLOG_COLUMN_COLORS = [
   "#ec4899",
 ] as const;
 
+/**
+ * O mesmo kanban serve dois quadros: os materiais do Instagram da agência e as
+ * entregas de cliente que viram nota fiscal. Cada coluna pertence a um deles.
+ */
+export const BACKLOG_BOARDS = ["instagram", "entregas"] as const;
+export type BacklogBoardKind = (typeof BACKLOG_BOARDS)[number];
+
+export function normalizeBacklogBoard(value: unknown): BacklogBoardKind {
+  return value === "entregas" ? "entregas" : "instagram";
+}
+
 export interface BacklogColumn {
   id: string;
   name: string;
   color: string;
   position: number;
+  board: BacklogBoardKind;
+  /** Coluna que representa entrega concluída — o que entra na nota do mês. */
+  billable: boolean;
+  /** Entre as faturáveis, a que significa dinheiro já recebido. */
+  paid: boolean;
   created_at: string;
 }
 
@@ -36,7 +56,8 @@ export interface BacklogCard {
   column_id: string;
   client_id: string | null;
   guide_id: string | null;
-  assignee_id: string | null;
+  /** Responsáveis vêm da tabela de junção; um card aceita mais de um. */
+  assignee_ids: string[];
   position: number;
   title: string;
   description: string;
@@ -52,6 +73,15 @@ export interface BacklogCard {
   sent_whatsapp_at: string | null;
   approved_at: string | null;
   approved_by: string | null;
+  /** Cobrança — só usada no quadro de entregas. */
+  contract_type: ContractType | null;
+  /** Produto escrito à mão: vale só neste card, não entra no catálogo. */
+  custom_service: string | null;
+  service_id: string | null;
+  quantity: number;
+  unit_price_cents: number | null;
+  paid_at: string | null;
+  payment_method: PaymentMethod | null;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -86,6 +116,58 @@ export interface BacklogActivity {
  * trocaria os ids. `matchesColumnName` normaliza acento e caixa.
  */
 export const BACKUP_QUESTION = "Onde foi feito o backup?";
+export const PAYMENT_QUESTION = "O pagamento já foi feito?";
+
+export const CONTRACT_TYPES = ["mensal", "freela"] as const;
+export type ContractType = (typeof CONTRACT_TYPES)[number];
+
+export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
+  mensal: "Mensal",
+  freela: "Freela",
+};
+
+export function normalizeContractType(value: unknown): ContractType | null {
+  const raw = String(value ?? "").trim();
+  return (CONTRACT_TYPES as readonly string[]).includes(raw)
+    ? (raw as ContractType)
+    : null;
+}
+
+export const PAYMENT_METHODS = [
+  "pix",
+  "transferencia",
+  "boleto",
+  "dinheiro",
+  "cartao",
+  "outro",
+] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  pix: "Pix",
+  transferencia: "Transferência",
+  boleto: "Boleto",
+  dinheiro: "Dinheiro",
+  cartao: "Cartão",
+  outro: "Outro",
+};
+
+/** Fora da lista vira null: a forma de pagamento é opcional, não um palpite. */
+export function normalizePaymentMethod(value: unknown): PaymentMethod | null {
+  const raw = String(value ?? "").trim();
+  return (PAYMENT_METHODS as readonly string[]).includes(raw)
+    ? (raw as PaymentMethod)
+    : null;
+}
+
+/**
+ * O que o quadro pergunta depois de um arraste. O de texto vira uma linha na
+ * atividade; o de pagamento decide onde o card pousa, então carrega o id da
+ * coluna de espera para o caso de "ainda não".
+ */
+export type BacklogPrompt =
+  | { kind: "text"; question: string }
+  | { kind: "payment"; question: string; waitingColumnId: string };
 
 function normalizeName(value: string): string {
   return value
@@ -115,6 +197,20 @@ export function shouldAskBackupQuestion(
 export interface BacklogClientOption {
   id: string;
   name: string;
+  /** Dia de vencimento, para marcar o que já passou da data no quadro. */
+  payment_day: number | null;
+}
+
+/**
+ * Vencimento de um mês de competência: o combinado é pagar no mês seguinte
+ * ao da entrega — entrega de agosto com vencimento 10 é cobrada até 10/09.
+ * Dia 31 num mês de 30 cai no último dia, que é como banco e boleto tratam.
+ */
+export function dueDateOf(month: string, paymentDay: number): Date {
+  const year = Number(month.slice(0, 4));
+  const index = Number(month.slice(5, 7)); // mês seguinte, já em base 0
+  const ultimoDia = new Date(year, index + 1, 0).getDate();
+  return new Date(year, index, Math.min(paymentDay, ultimoDia));
 }
 
 export interface BacklogGuideOption {
@@ -129,6 +225,7 @@ export interface BacklogUserOption {
 }
 
 export interface BacklogBoard {
+  board: BacklogBoardKind;
   columns: BacklogColumn[];
   cards: BacklogCard[];
   checklist: BacklogChecklistItem[];
@@ -136,6 +233,8 @@ export interface BacklogBoard {
   clients: BacklogClientOption[];
   guides: BacklogGuideOption[];
   users: BacklogUserOption[];
+  /** Catálogo de preços, pra preencher a cobrança do card. */
+  services: ServiceOption[];
 }
 
 // ------------------------------------------------------------------ filtro
@@ -267,8 +366,10 @@ export function filterBacklogCards(
     if (!matchesKeyword(card, filter.keyword)) return false;
 
     if (filter.assignees.length > 0) {
-      const key = card.assignee_id ?? "none";
-      if (!filter.assignees.includes(key)) return false;
+      // Card sem responsável casa com "sem responsável"; com vários, basta um
+      // deles estar no filtro.
+      const keys = card.assignee_ids.length > 0 ? card.assignee_ids : ["none"];
+      if (!keys.some((key) => filter.assignees.includes(key))) return false;
     }
 
     if (filter.clients.length > 0) {

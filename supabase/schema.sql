@@ -287,7 +287,6 @@ create table if not exists backlog_cards (
   column_id uuid not null references backlog_columns(id) on delete cascade,
   client_id uuid references gallery_clients(id) on delete set null,
   guide_id uuid references guides(id) on delete set null,
-  assignee_id uuid references users(id) on delete set null,
   position integer not null default 0,
   title text not null default '',
   description text not null default '',
@@ -312,7 +311,6 @@ create table if not exists backlog_cards (
 
 create index if not exists backlog_cards_column_id_idx on backlog_cards(column_id);
 create index if not exists backlog_cards_client_id_idx on backlog_cards(client_id);
-create index if not exists backlog_cards_assignee_id_idx on backlog_cards(assignee_id);
 create index if not exists backlog_cards_post_date_idx on backlog_cards(post_date);
 create index if not exists backlog_cards_tags_idx on backlog_cards using gin (tags);
 
@@ -412,3 +410,127 @@ create index if not exists daily_todos_completed_at_idx
   where completed_at is not null;
 
 alter table daily_todos enable row level security;
+
+-- Entregas por cliente e faturamento mensal (ver
+-- supabase/migrations/0041_add_delivery_board_and_billing.sql).
+
+alter table backlog_columns
+  add column if not exists board text not null default 'instagram'
+    check (board in ('instagram', 'entregas'));
+alter table backlog_columns
+  add column if not exists billable boolean not null default false;
+
+create index if not exists backlog_columns_board_idx on backlog_columns(board);
+
+create table if not exists services (
+  id uuid primary key default gen_random_uuid(),
+  name text not null default 'Novo serviço',
+  price_cents integer not null default 0 check (price_cents >= 0),
+  position integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table services enable row level security;
+
+alter table backlog_cards
+  add column if not exists service_id uuid references services(id) on delete set null;
+alter table backlog_cards
+  add column if not exists quantity integer not null default 1 check (quantity > 0);
+alter table backlog_cards
+  add column if not exists unit_price_cents integer check (unit_price_cents >= 0);
+
+create table if not exists monthly_invoices (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references gallery_clients(id) on delete cascade,
+  month date not null,
+  total_cents integer not null default 0 check (total_cents >= 0),
+  notes text not null default '',
+  closed_at timestamptz not null default now(),
+  closed_by uuid references users(id) on delete set null,
+  unique (client_id, month)
+);
+
+create table if not exists monthly_invoice_items (
+  id uuid primary key default gen_random_uuid(),
+  invoice_id uuid not null references monthly_invoices(id) on delete cascade,
+  card_id uuid references backlog_cards(id) on delete set null,
+  description text not null default '',
+  quantity integer not null default 1 check (quantity > 0),
+  unit_price_cents integer not null default 0 check (unit_price_cents >= 0),
+  position integer not null default 0
+);
+
+create index if not exists monthly_invoices_client_id_idx on monthly_invoices(client_id);
+create index if not exists monthly_invoice_items_invoice_id_idx
+  on monthly_invoice_items(invoice_id);
+
+alter table monthly_invoices enable row level security;
+alter table monthly_invoice_items enable row level security;
+
+-- Aguardando pagamento: entrega feita e dinheiro recebido são estados
+-- diferentes (ver supabase/migrations/0042_add_payment_column.sql).
+
+alter table backlog_columns
+  add column if not exists paid boolean not null default false;
+
+alter table backlog_cards
+  add column if not exists paid_at date;
+alter table backlog_cards
+  add column if not exists payment_method text
+    check (payment_method in ('pix', 'transferencia', 'boleto', 'dinheiro', 'cartao', 'outro'));
+
+alter table monthly_invoice_items
+  add column if not exists paid boolean not null default false;
+alter table monthly_invoice_items
+  add column if not exists paid_at date;
+alter table monthly_invoice_items
+  add column if not exists payment_method text;
+
+-- Vários responsáveis por card, tipo de contrato e produto escrito à mão (ver
+-- supabase/migrations/0043_card_assignees_and_contract.sql).
+
+create table if not exists backlog_card_assignees (
+  card_id uuid not null references backlog_cards(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (card_id, user_id)
+);
+
+create index if not exists backlog_card_assignees_user_id_idx
+  on backlog_card_assignees(user_id);
+
+alter table backlog_card_assignees enable row level security;
+
+alter table backlog_cards
+  add column if not exists contract_type text
+    check (contract_type in ('mensal', 'freela'));
+alter table backlog_cards
+  add column if not exists custom_service text;
+
+-- Dados de cobrança do cliente (ver
+-- supabase/migrations/0044_client_billing_details.sql).
+
+alter table gallery_clients
+  add column if not exists company_name text;
+alter table gallery_clients
+  add column if not exists contact_name text;
+alter table gallery_clients
+  add column if not exists phone text;
+alter table gallery_clients
+  add column if not exists email text;
+alter table gallery_clients
+  add column if not exists document text;
+alter table gallery_clients
+  add column if not exists address text;
+alter table gallery_clients
+  add column if not exists notes text;
+alter table gallery_clients
+  add column if not exists payment_day integer
+    check (payment_day between 1 and 31);
+
+-- Arquivar cliente sem perder o histórico (ver
+-- supabase/migrations/0045_archive_clients.sql).
+alter table gallery_clients
+  add column if not exists archived_at timestamptz;
