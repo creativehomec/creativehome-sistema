@@ -13,7 +13,7 @@ import {
 import type { BudgetWithSections } from "@/lib/budgets";
 import { PACKAGE_WHATSAPP_URL } from "@/lib/budgetCalc";
 import { brand, brandGeneratedBy } from "@/lib/brand";
-import { isLikelyImageUrl } from "@/lib/references";
+import { isLikelyImageUrl, toPdfSafeImageUrl } from "@/lib/references";
 
 // Fonte de display da marca. Só registra se o cliente tiver entregado uma
 // fonte própria — senão o PDF cai no Helvetica embutido do react-pdf.
@@ -179,7 +179,7 @@ function BudgetPdfDocument({ budget }: { budget: BudgetWithSections }) {
                       <Link src={href}>
                         {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf's Image is not an HTML img and has no alt prop */}
                         <Image
-                          src={item.image_url}
+                          src={toPdfSafeImageUrl(item.image_url)}
                           style={styles.referenceImage}
                         />
                       </Link>
