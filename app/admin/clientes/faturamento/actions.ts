@@ -12,7 +12,7 @@ import { getCurrentSession } from "@/lib/session";
 
 function revalidateBilling() {
   revalidatePath("/admin/clientes/faturamento");
-  revalidatePath("/admin/clientes/entregas");
+  revalidatePath("/admin/backlog");
   revalidatePath("/admin/clientes/resumo");
 }
 

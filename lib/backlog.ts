@@ -5,7 +5,6 @@ import {
   normalizeBacklogFormat,
   parseBacklogTags,
   shouldAskBackupQuestion,
-  normalizeBacklogBoard,
   normalizeContractType,
   normalizePaymentMethod,
   PAYMENT_QUESTION,
@@ -14,7 +13,6 @@ import {
   type ContractType,
   type PaymentMethod,
   type BacklogBoard,
-  type BacklogBoardKind,
   type BacklogCard,
   type BacklogChecklistItem,
   type BacklogClientOption,
@@ -29,7 +27,6 @@ import { parseBRLToCents } from "@/lib/billingTypes";
 export type {
   BacklogActivity,
   BacklogBoard,
-  BacklogBoardKind,
   BacklogCard,
   BacklogChecklistItem,
   BacklogClientOption,
@@ -83,17 +80,12 @@ function normalizeText(value: unknown): string | null {
 
 // ---------------------------------------------------------------- leitura
 
-export async function getBacklogBoard(
-  board: BacklogBoardKind = "instagram"
-): Promise<BacklogBoard> {
+export async function getBacklogBoard(): Promise<BacklogBoard> {
   const supabase = getSupabaseServerClient();
 
-  // Os cards vêm filtrados pelas colunas do quadro pedido, então o kanban de
-  // entregas nunca carrega o backlog do Instagram (e vice-versa).
   const { data: columnRows, error: columnsError } = await supabase
     .from("backlog_columns")
     .select("*")
-    .eq("board", board)
     .order("position");
   if (columnsError) throw columnsError;
 
@@ -116,7 +108,6 @@ export async function getBacklogBoard(
           .order("position"),
       ]);
     return {
-      board,
       columns,
       cards: [],
       checklist: [],
@@ -204,7 +195,6 @@ export async function getBacklogBoard(
   if (servicesResult.error) throw servicesResult.error;
 
   return {
-    board,
     columns,
     cards,
     checklist: (checklistResult.data ?? []) as BacklogChecklistItem[],
@@ -221,15 +211,12 @@ export async function getBacklogBoard(
 export async function createBacklogColumn(fields: {
   name: string;
   color: string;
-  board?: BacklogBoardKind;
 }): Promise<BacklogColumn> {
   const supabase = getSupabaseServerClient();
-  const board = normalizeBacklogBoard(fields.board);
 
   const { data: last, error: lastError } = await supabase
     .from("backlog_columns")
     .select("position")
-    .eq("board", board)
     .order("position", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -240,7 +227,6 @@ export async function createBacklogColumn(fields: {
     .insert({
       name: fields.name.trim() || "Nova coluna",
       color: fields.color || "#6b7280",
-      board,
       position: (last?.position ?? -1) + 1,
     })
     .select("*")
@@ -428,13 +414,13 @@ export async function setBacklogCardAssignees(
  */
 export async function getBacklogCardBrief(
   id: string
-): Promise<{ title: string; assigneeIds: string[]; board: BacklogBoardKind }> {
+): Promise<{ title: string; assigneeIds: string[] }> {
   const supabase = getSupabaseServerClient();
   const [{ data, error }, { data: assignees, error: assigneesError }] =
     await Promise.all([
       supabase
         .from("backlog_cards")
-        .select("title, backlog_columns(board)")
+        .select("title")
         .eq("id", id)
         .single(),
       supabase
@@ -445,22 +431,10 @@ export async function getBacklogCardBrief(
   if (error) throw error;
   if (assigneesError) throw assigneesError;
 
-  const column = data?.backlog_columns as
-    | { board: string }
-    | { board: string }[]
-    | null;
-  const board = Array.isArray(column) ? column[0]?.board : column?.board;
-
   return {
     title: (data?.title as string) ?? "",
     assigneeIds: (assignees ?? []).map((row) => row.user_id as string),
-    board: normalizeBacklogBoard(board),
   };
-}
-
-/** Onde o card mora — o destino dos avisos da campainha. */
-export function backlogBoardPath(board: BacklogBoardKind): string {
-  return board === "entregas" ? "/admin/clientes/entregas" : "/admin/backlog";
 }
 
 export async function updateBacklogCard(id: string, fields: BacklogCardInput) {
@@ -712,10 +686,9 @@ function buildMovePrompt(params: {
 }): BacklogPrompt | null {
   const target = params.columns.find((column) => column.id === params.toColumnId);
 
-  if (target?.board === "entregas" && target.billable && target.paid) {
+  if (target?.billable && target.paid) {
     const waiting = params.columns.find(
-      (column) =>
-        column.board === "entregas" && column.billable && !column.paid
+      (column) => column.billable && !column.paid
     );
     if (waiting) {
       return {
@@ -757,7 +730,7 @@ export async function moveBacklogCard(params: {
       .select("column_id, title")
       .eq("id", params.cardId)
       .single(),
-    supabase.from("backlog_columns").select("id, name, board, billable, paid"),
+    supabase.from("backlog_columns").select("id, name, billable, paid"),
   ]);
 
   const nameById = new Map(

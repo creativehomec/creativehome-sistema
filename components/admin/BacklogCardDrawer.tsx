@@ -407,7 +407,6 @@ export function BacklogCardDrawer({
   guides,
   users,
   services = [],
-  showBilling = false,
   onClose,
   onSave,
   onDelete,
@@ -415,14 +414,12 @@ export function BacklogCardDrawer({
   card: BacklogCard;
   checklist: BacklogChecklistItem[];
   activity: BacklogActivity[];
-  /** Na primeira coluna o material ainda é ideia — comentário só depois. */
+  /** Na primeira coluna a entrega ainda é ideia — comentário só depois. */
   isFirstColumn: boolean;
   clients: BacklogClientOption[];
   guides: BacklogGuideOption[];
   users: BacklogUserOption[];
   services?: ServiceOption[];
-  /** Cobrança só aparece no quadro de entregas. */
-  showBilling?: boolean;
   onClose: () => void;
   onSave: (formData: FormData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -504,9 +501,8 @@ export function BacklogCardDrawer({
             </div>
             <div>
               <label className={labelClass} htmlFor="backlog-post-date">
-                {/* No quadro de entregas esta data decide o mês da nota
-                    fiscal, então ela não pode continuar se chamando "post". */}
-                {showBilling ? "Data da entrega" : "Data de post"}
+                {/* É esta data que decide o mês da nota fiscal. */}
+                Data da entrega
               </label>
               <input
                 id="backlog-post-date"
@@ -572,42 +568,38 @@ export function BacklogCardDrawer({
             </div>
           </div>
 
-          {showBilling ? (
-            <div>
-              <p className={labelClass}>Tipo de contrato</p>
-              <div className="flex flex-wrap gap-1.5">
-                {CONTRACT_TYPES.map((option) => (
-                  <label
-                    key={option}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 has-checked:border-neutral-900 has-checked:bg-neutral-900 has-checked:text-white pointer-coarse:min-h-11"
-                  >
-                    <input
-                      type="radio"
-                      name="contract_type"
-                      value={option}
-                      defaultChecked={card.contract_type === option}
-                      className="sr-only"
-                    />
-                    {CONTRACT_TYPE_LABELS[option]}
-                  </label>
-                ))}
-                <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-500 has-checked:border-neutral-900 has-checked:bg-neutral-900 has-checked:text-white pointer-coarse:min-h-11">
+          <div>
+            <p className={labelClass}>Tipo de contrato</p>
+            <div className="flex flex-wrap gap-1.5">
+              {CONTRACT_TYPES.map((option) => (
+                <label
+                  key={option}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 has-checked:border-neutral-900 has-checked:bg-neutral-900 has-checked:text-white pointer-coarse:min-h-11"
+                >
                   <input
                     type="radio"
                     name="contract_type"
-                    value="none"
-                    defaultChecked={!card.contract_type}
+                    value={option}
+                    defaultChecked={card.contract_type === option}
                     className="sr-only"
                   />
-                  Não definido
+                  {CONTRACT_TYPE_LABELS[option]}
                 </label>
-              </div>
+              ))}
+              <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-500 has-checked:border-neutral-900 has-checked:bg-neutral-900 has-checked:text-white pointer-coarse:min-h-11">
+                <input
+                  type="radio"
+                  name="contract_type"
+                  value="none"
+                  defaultChecked={!card.contract_type}
+                  className="sr-only"
+                />
+                Não definido
+              </label>
             </div>
-          ) : null}
+          </div>
 
-          {showBilling ? (
-            <BillingFields card={card} services={services} />
-          ) : null}
+          <BillingFields card={card} services={services} />
 
           <div>
             <label className={labelClass} htmlFor="backlog-client">

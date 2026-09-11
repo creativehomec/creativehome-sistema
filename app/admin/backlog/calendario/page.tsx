@@ -25,10 +25,10 @@ export default async function BacklogCalendarPage() {
   return (
     <div className="mx-auto w-full max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <AdminHeader
-        title="Backlog do Instagram"
+        title="Entregas"
         trail={[
           { label: "Admin", href: "/admin" },
-          { label: "Backlog", href: "/admin/backlog" },
+          { label: "Entregas", href: "/admin/backlog" },
           { label: "Calendário" },
         ]}
         username={username}

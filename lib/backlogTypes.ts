@@ -27,23 +27,11 @@ export const BACKLOG_COLUMN_COLORS = [
   "#ec4899",
 ] as const;
 
-/**
- * O mesmo kanban serve dois quadros: os materiais do Instagram da agência e as
- * entregas de cliente que viram nota fiscal. Cada coluna pertence a um deles.
- */
-export const BACKLOG_BOARDS = ["instagram", "entregas"] as const;
-export type BacklogBoardKind = (typeof BACKLOG_BOARDS)[number];
-
-export function normalizeBacklogBoard(value: unknown): BacklogBoardKind {
-  return value === "entregas" ? "entregas" : "instagram";
-}
-
 export interface BacklogColumn {
   id: string;
   name: string;
   color: string;
   position: number;
-  board: BacklogBoardKind;
   /** Coluna que representa entrega concluída — o que entra na nota do mês. */
   billable: boolean;
   /** Entre as faturáveis, a que significa dinheiro já recebido. */
@@ -225,7 +213,6 @@ export interface BacklogUserOption {
 }
 
 export interface BacklogBoard {
-  board: BacklogBoardKind;
   columns: BacklogColumn[];
   cards: BacklogCard[];
   checklist: BacklogChecklistItem[];

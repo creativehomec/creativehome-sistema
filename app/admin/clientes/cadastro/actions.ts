@@ -17,7 +17,7 @@ import {
  */
 function revalidateClients() {
   revalidatePath("/admin/clientes/cadastro");
-  revalidatePath("/admin/clientes/entregas");
+  revalidatePath("/admin/backlog");
   revalidatePath("/admin/clientes/faturamento");
   revalidatePath("/admin/galerias");
 }
@@ -35,7 +35,7 @@ export async function updateClientAction(formData: FormData) {
     formData.get("published") === "on" ? "published" : "draft"
   );
   revalidateClients();
-  revalidatePath("/admin/clientes/entregas");
+  revalidatePath("/admin/backlog");
 }
 
 export async function setClientArchivedAction(formData: FormData) {
@@ -44,7 +44,7 @@ export async function setClientArchivedAction(formData: FormData) {
     formData.get("archived") === "true"
   );
   revalidateClients();
-  revalidatePath("/admin/clientes/entregas");
+  revalidatePath("/admin/backlog");
   revalidatePath("/admin/clientes/resumo");
 }
 
@@ -56,6 +56,6 @@ export async function setClientArchivedAction(formData: FormData) {
 export async function deleteClientAction(formData: FormData) {
   await deleteGalleryClient(String(formData.get("id")));
   revalidateClients();
-  revalidatePath("/admin/clientes/entregas");
+  revalidatePath("/admin/backlog");
   revalidatePath("/admin/clientes/resumo");
 }

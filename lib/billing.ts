@@ -95,7 +95,6 @@ export async function getMonthDeliveries(
   const { data: columns, error: columnsError } = await supabase
     .from("backlog_columns")
     .select("id, paid")
-    .eq("board", "entregas")
     .eq("billable", true);
   if (columnsError) throw columnsError;
 
@@ -289,8 +288,7 @@ export async function getYearTotals(year: number): Promise<YearClientTotals[]> {
     supabase
       .from("backlog_columns")
       .select("id")
-      .eq("board", "entregas")
-      .eq("billable", true),
+        .eq("billable", true),
   ]);
 
   if (clientsResult.error) throw clientsResult.error;
@@ -363,8 +361,7 @@ export async function getOverdueByClient(): Promise<OverdueClient[]> {
     supabase
       .from("backlog_columns")
       .select("id")
-      .eq("board", "entregas")
-      .eq("billable", true)
+        .eq("billable", true)
       .eq("paid", false),
   ]);
   if (clientsResult.error) throw clientsResult.error;
@@ -428,7 +425,6 @@ export async function listClientMonths(clientId: string): Promise<string[]> {
   const { data: columns, error: columnsError } = await supabase
     .from("backlog_columns")
     .select("id")
-    .eq("board", "entregas")
     .eq("billable", true);
   if (columnsError) throw columnsError;
 

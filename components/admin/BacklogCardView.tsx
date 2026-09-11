@@ -78,7 +78,6 @@ export function BacklogCardView({
   guideTitle,
   authorNameById,
   canComment,
-  showBilling = false,
   onClose,
   onEdit,
 }: {
@@ -93,8 +92,6 @@ export function BacklogCardView({
   authorNameById: Map<string, string>;
   /** Comentário só é liberado fora da primeira coluna, como no drawer. */
   canComment: boolean;
-  /** Cobrança e vocabulário de entrega só valem no quadro de clientes. */
-  showBilling?: boolean;
   onClose: () => void;
   onEdit: () => void;
 }) {
@@ -164,7 +161,7 @@ export function BacklogCardView({
                 ? assigneeNames.map((name) => `@${name}`).join(", ")
                 : "—"}
             </Field>
-            <Field label={showBilling ? "Data da entrega" : "Data de post"}>
+            <Field label="Data da entrega">
               {card.post_date ? formatDate(card.post_date) : "Sem data"}
             </Field>
             <Field label="Horário">
@@ -185,28 +182,26 @@ export function BacklogCardView({
             </Field>
           ) : null}
 
-          {showBilling && card.contract_type ? (
+          {card.contract_type ? (
             <Field label="Contrato">
               {CONTRACT_TYPE_LABELS[card.contract_type]}
             </Field>
           ) : null}
 
-          {showBilling ? (
-            <Field label="Pagamento">
-              {card.paid_at || card.payment_method
-                ? [
-                    card.paid_at
-                      ? `Pago em ${formatBacklogDateShort(card.paid_at)}`
-                      : "Pago",
-                    card.payment_method
-                      ? PAYMENT_METHOD_LABELS[card.payment_method]
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                : "Ainda não recebido"}
-            </Field>
-          ) : null}
+          <Field label="Pagamento">
+            {card.paid_at || card.payment_method
+              ? [
+                  card.paid_at
+                    ? `Pago em ${formatBacklogDateShort(card.paid_at)}`
+                    : "Pago",
+                  card.payment_method
+                    ? PAYMENT_METHOD_LABELS[card.payment_method]
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "Ainda não recebido"}
+          </Field>
 
           <Field label="Guia de captação">{guideTitle ?? "—"}</Field>
 

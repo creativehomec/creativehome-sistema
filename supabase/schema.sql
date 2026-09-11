@@ -269,10 +269,9 @@ create index if not exists gallery_images_client_id_idx on gallery_images(client
 alter table gallery_clients enable row level security;
 alter table gallery_images enable row level security;
 
--- Backlog do Instagram — kanban de materiais da agência, com calendário de
--- postagem (ver supabase/migrations/0022_add_backlog.sql). As colunas do
--- quadro são editáveis pelo admin e a mídia do card é link (Drive), não
--- upload.
+-- Quadro de entregas — kanban do trabalho de cliente, com calendário (ver
+-- supabase/migrations/0022_add_backlog.sql). As colunas do quadro são
+-- editáveis pelo admin e a mídia do card é link (Drive), não upload.
 
 create table if not exists backlog_columns (
   id uuid primary key default gen_random_uuid(),
@@ -412,15 +411,13 @@ create index if not exists daily_todos_completed_at_idx
 alter table daily_todos enable row level security;
 
 -- Entregas por cliente e faturamento mensal (ver
--- supabase/migrations/0041_add_delivery_board_and_billing.sql).
+-- supabase/migrations/0041_add_delivery_board_and_billing.sql). A coluna
+-- `board`, que separava este quadro do backlog do Instagram, saiu na 0048:
+-- o sistema tem um quadro só.
 
-alter table backlog_columns
-  add column if not exists board text not null default 'instagram'
-    check (board in ('instagram', 'entregas'));
+-- Colunas marcadas como faturáveis são as que entram na nota do mês.
 alter table backlog_columns
   add column if not exists billable boolean not null default false;
-
-create index if not exists backlog_columns_board_idx on backlog_columns(board);
 
 create table if not exists services (
   id uuid primary key default gen_random_uuid(),

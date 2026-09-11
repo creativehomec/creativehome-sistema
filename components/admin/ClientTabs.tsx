@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 
 const TABS = [
-  { href: "/admin/clientes/entregas", label: "Entregas" },
   { href: "/admin/clientes/faturamento", label: "Faturamento" },
   { href: "/admin/clientes/resumo", label: "Resumo" },
   { href: "/admin/clientes/cadastro", label: "Cadastro" },
@@ -26,7 +25,7 @@ export function ClientTabs() {
   return (
     <nav
       aria-label="Seções de clientes"
-      // No celular as quatro abas não cabem numa linha e quebrando custavam
+      // No celular as abas podem não caber numa linha e quebrando custavam
       // uma faixa inteira de altura antes do conteúdo: viram uma faixa que
       // rola. No desktop cabem e ficam todas à vista.
       className="flex items-center gap-1 overflow-x-auto rounded-lg border border-neutral-200 bg-white/90 p-1 backdrop-blur-md [scrollbar-width:none] sm:flex-wrap sm:overflow-visible"

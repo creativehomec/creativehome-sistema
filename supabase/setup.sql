@@ -283,10 +283,9 @@ create index if not exists gallery_images_client_id_idx on gallery_images(client
 alter table gallery_clients enable row level security;
 alter table gallery_images enable row level security;
 
--- Backlog do Instagram — kanban de materiais da agência, com calendário de
--- postagem (ver supabase/migrations/0022_add_backlog.sql). As colunas do
--- quadro são editáveis pelo admin e a mídia do card é link (Drive), não
--- upload.
+-- Quadro de entregas — kanban do trabalho de cliente, com calendário (ver
+-- supabase/migrations/0022_add_backlog.sql). As colunas do quadro são
+-- editáveis pelo admin e a mídia do card é link (Drive), não upload.
 
 create table if not exists backlog_columns (
   id uuid primary key default gen_random_uuid(),
@@ -571,15 +570,16 @@ create index if not exists backlog_card_events_user_id_idx
 -- por lá. Removê-la é assunto de uma migration posterior, depois que a
 -- transição estiver de pé em produção.
 
--- ===================== colunas iniciais do backlog =====================
--- Vinham da migration 0022. O `where not exists` deixa o statement
--- idempotente: num quadro que já tem colunas, não insere nada.
+-- ===================== colunas iniciais do quadro ======================
+-- O fluxo de entrega, como ficou depois da 0041/0042. O `where not exists`
+-- deixa o statement idempotente: num quadro que já tem colunas, não insere
+-- nada.
 insert into backlog_columns (name, color, position)
 select * from (values
-  ('Ideia', '#6b7280', 0),
-  ('Captado', '#0ea5e9', 1),
-  ('Editado', '#8b5cf6', 2),
-  ('Aprovação', '#f59e0b', 3),
-  ('Postado', '#10b981', 4)
+  ('Briefado', '#6b7280', 0),
+  ('Em produção', '#0ea5e9', 1),
+  ('Em edição', '#8b5cf6', 2),
+  ('Aguardando pagamento', '#f59e0b', 3),
+  ('Entregue', '#10b981', 4)
 ) as seed(name, color, position)
 where not exists (select 1 from backlog_columns);

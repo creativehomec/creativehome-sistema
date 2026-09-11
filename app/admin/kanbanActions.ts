@@ -7,12 +7,10 @@ import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_QUESTION,
   formatBacklogDateShort,
-  normalizeBacklogBoard,
   normalizePaymentMethod,
   type BacklogPrompt,
 } from "@/lib/backlogTypes";
 import {
-  backlogBoardPath,
   createBacklogActivity,
   createBacklogCard,
   createBacklogChecklistItem,
@@ -41,10 +39,12 @@ import {
   syncBacklogCardToCalendar,
 } from "@/lib/googleCalendar";
 
+/** Onde o quadro mora — o destino dos avisos da campainha. */
+const BOARD_PATH = "/admin/backlog";
+
 const KANBAN_PATHS = [
-  "/admin/backlog",
+  BOARD_PATH,
   "/admin/backlog/calendario",
-  "/admin/clientes/entregas",
   "/admin/clientes/faturamento",
   "/admin/clientes/resumo",
 ];
@@ -98,7 +98,6 @@ export async function createBacklogColumnAction(formData: FormData) {
   await createBacklogColumn({
     name: String(formData.get("name") ?? ""),
     color: String(formData.get("color") ?? "#6b7280"),
-    board: normalizeBacklogBoard(formData.get("board")),
   });
   revalidateBacklog();
 }
@@ -107,14 +106,8 @@ export async function updateBacklogColumnAction(formData: FormData) {
   await updateBacklogColumn(String(formData.get("id")), {
     name: String(formData.get("name") ?? ""),
     color: String(formData.get("color") ?? "#6b7280"),
-    // O checkbox só existe no quadro de entregas; nos outros o campo some do
-    // FormData e a flag fica como está.
-    billable: formData.has("billable_present")
-      ? formData.get("billable") === "on"
-      : undefined,
-    paid: formData.has("billable_present")
-      ? formData.get("paid") === "on"
-      : undefined,
+    billable: formData.get("billable") === "on",
+    paid: formData.get("paid") === "on",
   });
   revalidateBacklog();
 }
@@ -136,13 +129,12 @@ export async function createBacklogCardAction(formData: FormData) {
   const input = readBacklogCardInput(formData);
   const session = await getCurrentSession();
   const card = await createBacklogCard(columnId, input);
-  const { board } = await getBacklogCardBrief(card.id);
   await notifyAssignees({
     userIds: input.assignee_ids,
     actorId: session?.userId ?? null,
-    title: "Novo material atribuído a você",
+    title: "Nova entrega atribuída a você",
     body: card.title,
-    link: backlogBoardPath(board),
+    link: BOARD_PATH,
     entityId: card.id,
   });
   await syncCalendar(card.id);
@@ -154,7 +146,7 @@ export async function updateBacklogCardAction(formData: FormData) {
   const input = readBacklogCardInput(formData);
   // Só avisa quando o responsável muda — salvar o card de novo com a mesma
   // pessoa não deve reaparecer como novidade na campainha.
-  const { assigneeIds: previousAssigneeIds, board } = await getBacklogCardBrief(id);
+  const { assigneeIds: previousAssigneeIds } = await getBacklogCardBrief(id);
   await updateBacklogCard(id, input);
   // Só quem entrou agora recebe aviso: quem já era responsável não deve ver a
   // mesma novidade de novo a cada vez que alguém salva o card.
@@ -166,9 +158,9 @@ export async function updateBacklogCardAction(formData: FormData) {
     await notifyAssignees({
       userIds: novos,
       actorId: session?.userId ?? null,
-      title: "Material atribuído a você",
-      body: input.title || "Novo material",
-      link: backlogBoardPath(board),
+      title: "Entrega atribuída a você",
+      body: input.title || "Nova entrega",
+      link: BOARD_PATH,
       entityId: id,
     });
   }
@@ -187,14 +179,13 @@ export async function moveBacklogCardAction(params: {
     authorId: session?.userId ?? null,
   });
   if (result.moved) {
-    const { board } = await getBacklogCardBrief(params.cardId);
     await notifyAssignees({
       userIds: result.moved.assigneeIds,
       actorId: session?.userId ?? null,
       kind: "card_moved",
-      title: `Material movido para "${result.moved.toName}"`,
+      title: `Entrega movida para "${result.moved.toName}"`,
       body: result.moved.title,
-      link: backlogBoardPath(board),
+      link: BOARD_PATH,
       entityId: params.cardId,
     });
   }
@@ -271,9 +262,9 @@ export async function setBacklogCardApprovedAction(
     userIds: brief.assigneeIds,
     actorId: session?.userId ?? null,
     kind: "card_approved",
-    title: approved ? "Material aprovado" : "Aprovação removida",
+    title: approved ? "Entrega aprovada" : "Aprovação removida",
     body: brief.title,
-    link: backlogBoardPath(brief.board),
+    link: BOARD_PATH,
     entityId: cardId,
   });
   revalidateBacklog();

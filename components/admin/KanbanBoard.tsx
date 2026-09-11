@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -58,7 +56,6 @@ import {
   PAYMENT_METHOD_LABELS,
   type BacklogBoard,
   type BacklogCard,
-  type BacklogBoardKind,
   type BacklogChecklistItem,
   type BacklogClientOption,
   type BacklogColumn,
@@ -70,7 +67,6 @@ import {
   monthKey,
   monthLabel,
 } from "@/lib/billingTypes";
-import { BOARD_NOUNS, type BoardNouns } from "@/lib/boardNouns";
 import {
   createBacklogCardAction,
   createBacklogColumnAction,
@@ -193,14 +189,6 @@ function namesOf(ids: string[], nameById: Map<string, string>): string[] {
     .filter((name): name is string => Boolean(name));
 }
 
-/**
- * Vocabulário do quadro. Vive num contexto porque só as folhas da árvore
- * (formulário de adicionar, estado vazio, aviso de exclusão) precisam dele, e
- * passar o par de strings por quatro níveis de props não deixaria nada mais
- * claro. O padrão é o do Instagram, que é o quadro original.
- */
-const BoardNounsContext = createContext<BoardNouns>(BOARD_NOUNS.instagram);
-
 const inputClass =
   "w-full rounded-md border border-neutral-300 px-2.5 py-1.5 text-sm focus:border-neutral-500 focus:outline-none";
 
@@ -212,7 +200,6 @@ function CardBody({
   assigneeNames,
   checklist,
   showApproval = false,
-  compact = false,
   onOpen,
   onDuplicate,
 }: {
@@ -220,14 +207,8 @@ function CardBody({
   clientName: string | null;
   assigneeNames: string[];
   checklist: { done: number; total: number } | null;
-  /** Só na coluna de aprovação o material pode ser marcado como aprovado. */
+  /** Só na coluna de aprovação a entrega pode ser marcada como aprovada. */
   showApproval?: boolean;
-  /**
-   * Quadro de entregas: o card mostra quem, o quê, quando e o tipo de
-   * contrato. Valor, Drive e WhatsApp continuam no card aberto — no quadro
-   * eles só disputavam atenção com o que se procura de relance.
-   */
-  compact?: boolean;
   onOpen?: () => void;
   /** Duplicar só faz sentido no quadro, não no card fantasma do arraste. */
   onDuplicate?: () => void;
@@ -311,13 +292,7 @@ function CardBody({
         {/* No desktop os detalhes só aparecem com o mouse em cima: o quadro
             cheio fica legível de longe, e quem quer o detalhe se aproxima.
             Onde não existe hover (dedo), continuam sempre visíveis. */}
-        <div
-          className={`mt-1.5 flex-wrap items-center gap-1 ${
-            compact
-              ? "hidden group-hover/card:flex group-focus-within/card:flex pointer-coarse:flex"
-              : "flex"
-          }`}
-        >
+        <div className="mt-1.5 hidden flex-wrap items-center gap-1 group-focus-within/card:flex group-hover/card:flex pointer-coarse:flex">
           <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600">
             {BACKLOG_FORMAT_LABELS[card.format]}
           </span>
@@ -345,12 +320,6 @@ function CardBody({
               {formatBacklogDateShort(card.post_date)}
             </span>
           ) : null}
-          {card.unit_price_cents !== null && !compact ? (
-            <span className="rounded bg-neutral-900 px-1.5 py-0.5 text-[11px] text-white tabular-nums">
-              {card.quantity > 1 ? `${card.quantity}× ` : ""}
-              {formatBRL(lineTotalCents(card))}
-            </span>
-          ) : null}
           {/* Basta a data para o selo aparecer: uma entrega paga sem forma
               anotada continua sendo uma entrega paga. */}
           {card.paid_at || card.payment_method ? (
@@ -360,11 +329,6 @@ function CardBody({
               {card.payment_method
                 ? ` · ${PAYMENT_METHOD_LABELS[card.payment_method]}`
                 : ""}
-            </span>
-          ) : null}
-          {card.sent_whatsapp && !compact ? (
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] text-emerald-700">
-              WhatsApp ✓
             </span>
           ) : null}
           {checklist ? (
@@ -380,22 +344,6 @@ function CardBody({
           ) : null}
         </div>
 
-        {card.tags.length > 0 && !compact ? (
-          <p className="mt-1 truncate text-[11px] text-neutral-400">
-            {card.tags.map((tag) => `#${tag}`).join(" ")}
-          </p>
-        ) : null}
-
-        {card.drive_url && !compact ? (
-          <a
-            href={card.drive_url}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-1.5 inline-block text-[11px] text-neutral-500 underline hover:text-neutral-800"
-          >
-            Abrir no Drive ↗
-          </a>
-        ) : null}
       </div>
     </div>
   );
@@ -407,7 +355,6 @@ function SortableCard({
   assigneeNames,
   checklist,
   showApproval,
-  compact,
   draggable,
   onOpen,
   onDuplicate,
@@ -417,7 +364,6 @@ function SortableCard({
   assigneeNames: string[];
   checklist: { done: number; total: number } | null;
   showApproval: boolean;
-  compact: boolean;
   draggable: boolean;
   onOpen: () => void;
   onDuplicate: () => void;
@@ -443,7 +389,6 @@ function SortableCard({
         assigneeNames={assigneeNames}
         checklist={checklist}
         showApproval={showApproval}
-        compact={compact}
         onOpen={onOpen}
         onDuplicate={onDuplicate}
       />
@@ -453,11 +398,9 @@ function SortableCard({
 
 /** Ações do quadro que não são do dia a dia — hoje, criar coluna. */
 function BoardSettingsMenu({
-  boardKind,
   columns,
   onReorder,
 }: {
-  boardKind: BacklogBoardKind;
   columns: BacklogColumn[];
   onReorder: (orderedIds: string[]) => void;
 }) {
@@ -490,7 +433,6 @@ function BoardSettingsMenu({
       <PopoverContent align="end" className="max-h-[70vh] w-72 overflow-y-auto">
         <p className="text-sm font-semibold text-neutral-900">Nova coluna</p>
         <form action={createBacklogColumnAction} className="flex flex-col gap-2">
-          <input type="hidden" name="board" value={boardKind} />
           <input
             name="name"
             placeholder="Nome da coluna"
@@ -564,8 +506,6 @@ function BoardSettingsMenu({
 function QuickAddCard({ columnId }: { columnId: string }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
-  const nouns = useContext(BoardNounsContext);
-
   return (
     <form
       ref={formRef}
@@ -583,14 +523,14 @@ function QuickAddCard({ columnId }: { columnId: string }) {
       <input type="hidden" name="column_id" value={columnId} />
       <input
         name="title"
-        placeholder={nouns.novo}
+        placeholder="Nova entrega"
         disabled={pending}
         className="min-w-0 flex-1 rounded-md border border-dashed border-neutral-300 bg-white/60 px-2.5 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none disabled:opacity-50"
       />
       <button
         type="submit"
         disabled={pending}
-        aria-label={nouns.novo}
+        aria-label="Nova entrega"
         className="shrink-0 rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:min-w-11"
       >
         +
@@ -610,7 +550,6 @@ function ColumnHeader({
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
-  const nouns = useContext(BoardNounsContext);
 
   if (editing) {
     return (
@@ -639,32 +578,26 @@ function ColumnHeader({
             </option>
           ))}
         </select>
-        {column.board === "entregas" ? (
-          <div className="flex flex-col gap-1.5">
-            {/* Campo-sentinela: sem ele um checkbox desmarcado sumiria do
-                FormData e a ação não saberia diferenciar "desmarcou" de
-                "esse quadro não tem o campo". */}
-            <input type="hidden" name="billable_present" value="1" />
-            <label className="flex items-center gap-2 text-xs text-neutral-600">
-              <input
-                type="checkbox"
-                name="billable"
-                defaultChecked={column.billable}
-                className="size-3.5"
-              />
-              Conta como entrega na nota do mês
-            </label>
-            <label className="flex items-center gap-2 text-xs text-neutral-600">
-              <input
-                type="checkbox"
-                name="paid"
-                defaultChecked={column.paid}
-                className="size-3.5"
-              />
-              O pagamento já entrou
-            </label>
-          </div>
-        ) : null}
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-xs text-neutral-600">
+            <input
+              type="checkbox"
+              name="billable"
+              defaultChecked={column.billable}
+              className="size-3.5"
+            />
+            Conta como entrega na nota do mês
+          </label>
+          <label className="flex items-center gap-2 text-xs text-neutral-600">
+            <input
+              type="checkbox"
+              name="paid"
+              defaultChecked={column.paid}
+              className="size-3.5"
+            />
+            O pagamento já entrou
+          </label>
+        </div>
         <div className="flex items-center gap-3">
           <button
             type="submit"
@@ -685,7 +618,11 @@ function ColumnHeader({
             onClick={() => {
               if (
                 !window.confirm(
-                  `Excluir a coluna "${column.name}"? ${nouns.contagemExcluida(count)} junto.`
+                  `Excluir a coluna "${column.name}"? ${
+                    count === 1
+                      ? "1 entrega será excluída"
+                      : `${count} entregas serão excluídas`
+                  } junto.`
                 )
               ) {
                 return;
@@ -762,11 +699,9 @@ function SortableColumn({
   onOpenCard: (id: string) => void;
   onDuplicateCard: (id: string) => void;
 }) {
-  const nouns = useContext(BoardNounsContext);
-  const compact = column.board === "entregas";
   // A coluna de quem já entregou e ainda não recebeu é a que enche: agrupada
   // por cliente, ela responde "quanto o fulano me deve" de relance.
-  const agrupar = column.board === "entregas" && column.billable && !column.paid;
+  const agrupar = column.billable && !column.paid;
   const groups = agrupar
     ? groupByClient(cards, clients)
     : [{ name: "", cards, months: [] as ClientMonth[], paymentDay: null }];
@@ -818,7 +753,7 @@ function SortableColumn({
         >
           {cards.length === 0 ? (
             <p className="rounded-md border border-dashed border-neutral-300 px-3 py-6 text-center text-xs text-neutral-400">
-              {nouns.nenhum}
+              Nenhuma entrega
             </p>
           ) : null}
 
@@ -835,7 +770,6 @@ function SortableColumn({
                         : null
                     }
                     assigneeNames={namesOf(card.assignee_ids, assigneeNameById)}
-                    compact={compact}
                     onDuplicate={() => onDuplicateCard(card.id)}
                     checklist={checklistProgress(card.id, checklistItems)}
                     showApproval={isApprovalColumn(column.name)}
@@ -909,14 +843,13 @@ function SortableColumn({
   );
 }
 
-// ----------------------------------------------------------------- board
+// ---------------------------------------------------------------- quadro
 
 /**
- * Kanban compartilhado pelos dois quadros — o backlog do Instagram e as
- * entregas de cliente. O que muda entre eles vem de `board.board`: quais
- * colunas existem, se o card tem cobrança e para onde vão as colunas novas.
+ * O quadro de entregas — o único do sistema. Cada coluna diz em que ponto do
+ * fluxo a entrega está, e as marcadas como faturáveis são as que a nota do mês
+ * soma.
  */
-
 export function KanbanBoard({
   board,
   tabs,
@@ -1118,7 +1051,7 @@ export function KanbanBoard({
   const interacting = Boolean(activeCardId || openCardId || editingCardId);
 
   return (
-    <BoardNounsContext.Provider value={BOARD_NOUNS[board.board]}>
+    <>
       {interacting ? <span hidden data-live-pause /> : null}
       <BacklogToaster />
 
@@ -1137,7 +1070,6 @@ export function KanbanBoard({
             align="end"
           />
           <BoardSettingsMenu
-            boardKind={board.board}
             columns={columns}
             onReorder={handleReorderColumns}
           />
@@ -1220,7 +1152,6 @@ export function KanbanBoard({
                 activeCard.assignee_ids,
                 assigneeNameById
               )}
-              compact={board.board === "entregas"}
               checklist={checklistProgress(activeCard.id, board.checklist)}
               showApproval={false}
             />
@@ -1277,7 +1208,6 @@ export function KanbanBoard({
           }
           authorNameById={assigneeNameById}
           canComment={columns[0]?.id !== openCard.column_id}
-          showBilling={board.board === "entregas"}
           onClose={() => setOpenCardId(null)}
           onEdit={() => setEditingCardId(openCard.id)}
         />
@@ -1293,7 +1223,6 @@ export function KanbanBoard({
           guides={board.guides}
           users={board.users}
           services={board.services}
-          showBilling={board.board === "entregas"}
           onClose={() => {
             setEditingCardId(null);
             setOpenCardId(null);
@@ -1306,6 +1235,6 @@ export function KanbanBoard({
           }}
         />
       ) : null}
-    </BoardNounsContext.Provider>
+    </>
   );
 }
