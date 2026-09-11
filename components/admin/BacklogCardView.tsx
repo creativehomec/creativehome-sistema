@@ -64,7 +64,7 @@ function Field({
 }
 
 /**
- * Visualização do material: só leitura, com um botão que leva pro drawer de
+ * Visualização da entrega: só leitura, com um botão que leva pro drawer de
  * edição. Serve pro clique no card, que antes caía direto no formulário.
  */
 export function BacklogCardView({
@@ -301,7 +301,7 @@ export function BacklogCardView({
               </div>
             ) : (
               <p className="text-xs text-neutral-500">
-                Comentário fica liberado a partir de Captado.
+                Comentário fica liberado depois da primeira coluna.
               </p>
             )}
 

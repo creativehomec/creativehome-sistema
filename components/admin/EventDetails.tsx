@@ -477,7 +477,7 @@ export function EventDetails({
                   {event.canEdit ? "Abrir no Google ↗" : "Editar no Google ↗"}
                 </a>
               ) : null}
-              {/* Material do backlog não se apaga por aqui: ele nasce de um
+              {/* Entrega do quadro não se apaga por aqui: ela nasce de um
                   card, e sumir só com o evento deixaria o card apontando pro
                   vazio. O lugar de tirar da agenda é o próprio backlog. */}
               {event.canEdit && !event.fromBacklog ? (

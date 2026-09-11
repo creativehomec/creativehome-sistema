@@ -257,7 +257,7 @@ function ActivitySection({
         </div>
       ) : (
         <p className="mb-2 text-xs text-neutral-500">
-          Comentário fica liberado a partir de Captado.
+          Comentário fica liberado depois da primeira coluna.
         </p>
       )}
 

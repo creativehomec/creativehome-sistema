@@ -62,7 +62,7 @@ export default async function MinhaAgendaPage({
 }) {
   // A sessão sai do cookie, sem ida ao banco; tudo que depende dela vai
   // junto num lote só. Em série, o nome do cabeçalho e a contagem de
-  // materiais somavam meio segundo antes de a tela começar a existir.
+  // entregas somavam meio segundo antes de a tela começar a existir.
   const [session, params] = await Promise.all([getCurrentSession(), searchParams]);
 
   const [username, account, cardCount] = await Promise.all([
@@ -148,7 +148,7 @@ export default async function MinhaAgendaPage({
 
       {params.agenda_conectada ? (
         <p className="mb-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
-          Agenda conectada. Os materiais com data já foram enviados.
+          Agenda conectada. As entregas com data já foram enviadas.
         </p>
       ) : null}
 

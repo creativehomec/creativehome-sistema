@@ -42,7 +42,7 @@ export async function disconnectCalendarAction() {
   revalidate();
 }
 
-/** Reenvia todos os materiais com data — conserta o que ficou fora de
+/** Reenvia todas as entregas com data — conserta o que ficou fora de
  * sincronia quando o Google falhou no meio de alguma edição. */
 export async function syncMyCalendarAction(): Promise<number> {
   const session = await getCurrentSession();
@@ -116,7 +116,7 @@ export async function createEventAction(
 /**
  * Apaga um compromisso.
  *
- * Material do backlog não passa por aqui: ele nasce de um card, e apagar só
+ * Entrega do quadro não passa por aqui: ela nasce de um card, e apagar só
  * o evento deixaria o card apontando pra um compromisso que já não existe —
  * o lugar de tirar isso da agenda é o próprio backlog.
  */

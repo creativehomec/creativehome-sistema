@@ -43,7 +43,7 @@ export function UpcomingPosts({ posts }: { posts: UpcomingPost[] }) {
           id="proximas-titulo"
           className="text-sm font-semibold text-neutral-900"
         >
-          Próximas postagens
+          Próximas entregas
           {posts.length > 0 ? (
             <span className="font-normal text-neutral-500">
               {` · ${posts.length}`}

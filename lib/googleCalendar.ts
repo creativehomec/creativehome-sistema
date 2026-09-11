@@ -437,7 +437,7 @@ export interface UpcomingEvent {
  * Próximos compromissos da agenda conectada.
  *
  * Lê a agenda inteira, não só o que o app criou: a ideia é a pessoa abrir a
- * tela e ver o que tem pela frente, com os materiais do backlog no meio do
+ * tela e ver o que tem pela frente, com as entregas do quadro no meio do
  * resto. `singleEvents` expande séries repetidas em ocorrências, senão um
  * evento semanal apareceria uma vez só, na data em que foi criado.
  */
@@ -466,7 +466,7 @@ export async function listUpcomingEvents(
   }
   const data = await response.json();
 
-  // Quais desses eventos são materiais do backlog — usado só pra marcar na
+  // Quais desses eventos são entregas do quadro — usado só pra marcar na
   // lista, então uma consulta só pra todos os ids da pessoa basta.
   const supabase = getSupabaseServerClient();
   const { data: mine, error } = await supabase
@@ -959,8 +959,8 @@ export interface EventDraft {
 
 /**
  * Cria um compromisso na agenda da pessoa, a partir de um horário vazio da
- * grade. Não passa pelo backlog de propósito: "Minha Agenda" é espelho do
- * Google, e material do Instagram continua nascendo só no backlog.
+ * grade. Não passa pelo quadro de propósito: "Minha Agenda" é espelho do
+ * Google, e entrega continua nascendo só no quadro.
  */
 export async function createGoogleEvent(
   account: UserCalendarAccount,

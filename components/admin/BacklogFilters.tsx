@@ -226,7 +226,7 @@ export function BacklogFilters({
         </div>
 
         <div>
-          <p className={sectionClass}>Data de post</p>
+          <p className={sectionClass}>Data da entrega</p>
           {(
             Object.keys(BACKLOG_DATE_BUCKET_LABELS) as BacklogDateBucket[]
           ).map((bucket) => (

@@ -21,8 +21,8 @@ export function BacklogCalendarSync({
           <h2 className="text-sm font-medium text-neutral-900">Google Agenda</h2>
           <p className="text-xs text-neutral-500">
             {connected
-              ? `Sincronizando na sua agenda${accountEmail ? ` (${accountEmail})` : ""}. Todo material com data vira um evento.`
-              : "Sua agenda não está conectada — os materiais com data não aparecem no seu Google Agenda."}
+              ? `Sincronizando na sua agenda${accountEmail ? ` (${accountEmail})` : ""}. Toda entrega com data vira um evento.`
+              : "Sua agenda não está conectada — as entregas com data não aparecem no seu Google Agenda."}
           </p>
         </div>
 

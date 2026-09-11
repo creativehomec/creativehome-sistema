@@ -29,7 +29,7 @@ export function isoDayFromToday(offsetDays = 0) {
 }
 
 /**
- * Materiais agendados de hoje até hoje + UPCOMING_DAYS_AHEAD.
+ * Entregas agendadas de hoje até hoje + UPCOMING_DAYS_AHEAD.
  *
  * Não filtra por coluna: o nome das colunas é editável pelo admin, então não
  * existe jeito confiável de saber que um card já foi publicado. A janela mostra

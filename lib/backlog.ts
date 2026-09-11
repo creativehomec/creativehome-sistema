@@ -350,7 +350,7 @@ export async function createBacklogCard(
     .insert({
       column_id: columnId,
       position: (last?.position ?? -1) + 1,
-      title: fields.title.trim() || "Novo material",
+      title: fields.title.trim() || "Nova entrega",
       description: fields.description ?? "",
       format: fields.format ?? "reel",
       client_id: fields.client_id ?? null,
@@ -458,7 +458,7 @@ export async function updateBacklogCard(id: string, fields: BacklogCardInput) {
   const { error } = await supabase
     .from("backlog_cards")
     .update({
-      title: fields.title || "Novo material",
+      title: fields.title || "Nova entrega",
       description: fields.description,
       format: fields.format,
       client_id: fields.client_id,
@@ -678,7 +678,7 @@ export async function createBacklogActivity(params: {
  * ainda não. Só existe onde há uma espera configurada — sem ela a pergunta não
  * teria resposta possível.
  */
-function buildMovePrompt(params: {
+export function buildMovePrompt(params: {
   columns: BacklogColumn[];
   toColumnId: string;
   fromName: string;
@@ -866,9 +866,9 @@ export async function deleteBacklogCard(id: string) {
   if (error) throw error;
 }
 
-/** Quantos materiais têm data — o tanto que vai pra agenda de quem conecta. */
+/** Quantas entregas têm data — o tanto que vai pra agenda de quem conecta. */
 /**
- * Só alimenta o texto do painel de ajustes da agenda ("N materiais com data
+ * Só alimenta o texto do painel de ajustes da agenda ("N entregas com data
  * sendo sincronizados"), mas era consultado em toda visita à tela. Meio
  * minuto de validade tira essa ida ao banco do caminho crítico sem que o
  * número fique visivelmente velho.

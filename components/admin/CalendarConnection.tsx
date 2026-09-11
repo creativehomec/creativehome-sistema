@@ -67,7 +67,7 @@ export function CalendarConnection({
           Conectar minha agenda
         </h2>
         <p className="mt-1 max-w-prose text-sm text-neutral-500">
-          Todo material do backlog que tiver data vira um evento na sua agenda
+          Toda entrega do quadro que tiver data vira um evento na sua agenda
           principal do Google. É só autorizar — nada mais pra configurar.
         </p>
         <a
@@ -133,7 +133,7 @@ export function CalendarConnection({
                 {" "}em <span className="font-medium">{email}</span>
               </>
             ) : null}, na agenda principal. {cardCount}{" "}
-            {cardCount === 1 ? "material" : "materiais"} com data{" "}
+            {cardCount === 1 ? "entrega" : "entregas"} com data{" "}
             {cardCount === 1 ? "está" : "estão"} sendo sincronizado
             {cardCount === 1 ? "" : "s"}.
           </p>
@@ -147,7 +147,7 @@ export function CalendarConnection({
                   setMessage(null);
                   const synced = await syncMyCalendarAction();
                   setMessage(
-                    `${synced} ${synced === 1 ? "material sincronizado" : "materiais sincronizados"}.`
+                    `${synced} ${synced === 1 ? "entrega sincronizada" : "entregas sincronizadas"}.`
                   );
                 })
               }

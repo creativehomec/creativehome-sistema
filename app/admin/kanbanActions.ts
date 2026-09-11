@@ -272,7 +272,7 @@ export async function setBacklogCardApprovedAction(
 
 // ------------------------------------------------------------- atividade
 
-/** Resposta da automação — vira uma linha na atividade do material. */
+/** Resposta da automação — vira uma linha na atividade da entrega. */
 export async function answerBackupQuestionAction(
   cardId: string,
   answer: string

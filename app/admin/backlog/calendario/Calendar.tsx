@@ -157,7 +157,7 @@ function CardChip({
       title={columnName}
     >
       <span className="flex items-center gap-1">
-        {/* Bolinha = etapa do kanban em que o material está. */}
+        {/* Bolinha = etapa do kanban em que a entrega está. */}
         <span
           aria-hidden
           className="h-2 w-2 shrink-0 rounded-full"
@@ -492,7 +492,7 @@ function UndatedMenu({ count, children }: { count: number; children: React.React
       {/* Enquanto arrasta, o painel abre sozinho pra mostrar onde o card cai. */}
       {isOver && !open ? (
         <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-md border border-neutral-300 bg-white p-2 text-xs text-neutral-500 shadow-lg">
-          Solte pra tirar a data deste material.
+          Solte pra tirar a data desta entrega.
         </div>
       ) : null}
     </div>
@@ -775,7 +775,7 @@ export function Calendar({ board }: { board: BacklogBoard }) {
           <UndatedMenu count={undated.length}>
             {undated.length === 0 ? (
               <p className="text-xs text-neutral-500">
-                Todos os materiais têm data. Arraste um card pra cá pra tirar a
+                Todas as entregas têm data. Arraste um card pra cá pra tirar a
                 data dele.
               </p>
             ) : (
@@ -807,7 +807,7 @@ export function Calendar({ board }: { board: BacklogBoard }) {
       </div>
 
       <p className="hidden border-t border-neutral-200 p-3 text-sm text-neutral-500 sm:block">
-        Arraste um material pra outro dia pra mudar a data de post, ou solte no
+        Arraste uma entrega pra outro dia pra mudar a data, ou solte no
         menu &quot;Sem data&quot; pra tirar a data.
       </p>
 
