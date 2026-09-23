@@ -1,6 +1,11 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { MeuNivel, NivelCliente } from "@/lib/budgetCalc";
+import {
+  parseSections,
+  secoesPadrao,
+  type BudgetSection,
+} from "@/lib/budgetSections";
 
 export type BudgetStatus = "draft" | "published";
 
@@ -28,6 +33,11 @@ export interface Budget {
   calc_extras: number;
   calc_margem_pct: number;
   calc_tax_pct: number;
+  /**
+   * As seções da proposta, como vieram do banco (jsonb cru). Quem lê passa por
+   * parseSections antes de usar — BudgetWithSections já entrega parseado.
+   */
+  sections: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +77,7 @@ export interface BudgetReference {
 }
 
 export interface BudgetWithSections extends Budget {
+  sections: BudgetSection[];
   highlights: BudgetHighlight[];
   packages: BudgetPackage[];
   faq: BudgetFaq[];
@@ -164,6 +175,7 @@ async function attachSections(budget: Budget): Promise<BudgetWithSections> {
 
   return {
     ...budget,
+    sections: parseSections(budget.sections),
     highlights: highlights.data ?? [],
     packages: packages.data ?? [],
     faq: faq.data ?? [],
@@ -201,45 +213,23 @@ export async function getBudgetBySlugWithSections(
   return attachSections(data);
 }
 
-const DEFAULT_ABOUT_TITLE =
-  "Sua empresa não precisa só aparecer. Precisa ser reconhecida.";
-const DEFAULT_ABOUT_TEXT =
-  "Unimos estratégia, direção criativa e produção audiovisual para construir uma presença coerente.";
-const DEFAULT_HIGHLIGHTS = [
-  "Direção criativa acompanhando toda a operação",
-  "Conteúdo para orgânico e tráfego",
-  "Banco de imagens para desdobrar em vários conteúdos",
-  "Alinhamento mensal de performance para guiar a próxima pauta",
-];
-
 export async function createBudget(title: string): Promise<Budget> {
   const supabase = getSupabaseServerClient();
   const slug = await generateUniqueBudgetSlug(title || "novo-orcamento");
 
+  // A proposta nasce escrita: os textos que se repetem em toda proposta já
+  // vêm nas seções, e sobra trocar o que muda de cliente para cliente.
   const { data, error } = await supabase
     .from("budgets")
     .insert({
       title: title || "Novo orçamento",
       slug,
-      about_title: DEFAULT_ABOUT_TITLE,
-      about_text: DEFAULT_ABOUT_TEXT,
+      sections: secoesPadrao(),
     })
     .select("*")
     .single();
 
   if (error) throw error;
-
-  const { error: highlightsError } = await supabase
-    .from("budget_highlights")
-    .insert(
-      DEFAULT_HIGHLIGHTS.map((title, position) => ({
-        budget_id: data.id,
-        position,
-        title,
-      }))
-    );
-  if (highlightsError) throw highlightsError;
-
   return data;
 }
 
@@ -267,6 +257,27 @@ export async function updateBudgetInfo(
   const { error } = await supabase
     .from("budgets")
     .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+/**
+ * Grava o array inteiro de seções. É um UPDATE só, atômico e idempotente — é o
+ * que torna o autosave do editor barato.
+ *
+ * ponytail: last-write-wins no array inteiro; um editor por orçamento. Se duas
+ * pessoas passarem a editar a mesma proposta ao mesmo tempo, salvar só a seção
+ * alterada com jsonb_set.
+ */
+export async function updateBudgetSections(
+  id: string,
+  sections: BudgetSection[]
+) {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("budgets")
+    .update({ sections, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) throw error;
