@@ -1,24 +1,37 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-// A mesma conta Google serve o Drive (galerias) e o Google Agenda (backlog),
-// então o consentimento pede os dois escopos de uma vez. Quem já conectou
-// antes do calendário existir precisa conectar de novo pra liberar o escopo
-// novo — o refresh_token antigo não ganha permissões retroativamente.
-const OAUTH_SCOPES = [
-  "https://www.googleapis.com/auth/drive.readonly",
-  "https://www.googleapis.com/auth/calendar",
-];
+/**
+ * Só o Drive, e só leitura.
+ *
+ * O escopo de calendário saiu daqui: a agenda passou a ser por usuário, com
+ * client próprio (ver `lib/userCalendars.ts`). Manter `calendar` nesta lista
+ * não dava acesso a nada — nenhum código usa o token do estúdio pra
+ * calendário — mas fazia o consentimento pedir permissão que ninguém usava.
+ *
+ * `drive.readonly` é escopo *restricted* no Google: publicar um client que o
+ * declara exige auditoria de segurança paga. Por isso ele vive isolado num
+ * client só do estúdio, onde uma conta só conecta, em vez de contaminar o
+ * client da agenda, que a equipe inteira precisa usar.
+ */
+const OAUTH_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"];
 const TOKEN_ROW_ID = "default";
 
 function getEnv() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+  // Os nomes sem prefixo são os antigos, de quando um client servia os dois
+  // fluxos. Ficam como reserva pra instalação existente não cair no meio da
+  // migração; some daqui quando a Vercel e o .env.local estiverem nos novos.
+  const clientId =
+    process.env.GOOGLE_DRIVE_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID;
+  const clientSecret =
+    process.env.GOOGLE_DRIVE_CLIENT_SECRET ?? process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri =
+    process.env.GOOGLE_DRIVE_REDIRECT_URI ??
+    process.env.GOOGLE_OAUTH_REDIRECT_URI;
 
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error(
-      "Google Drive não configurado: defina GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_OAUTH_REDIRECT_URI no .env.local"
+      "Google Drive não configurado: defina GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET e GOOGLE_DRIVE_REDIRECT_URI no .env.local"
     );
   }
 

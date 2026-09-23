@@ -722,7 +722,7 @@ function SortableColumn({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`w-72 shrink-0 rounded-lg bg-neutral-50 p-3 ${
+      className={`w-[min(18rem,85vw)] shrink-0 snap-start rounded-lg bg-neutral-50 p-3 ${
         isDragging ? "opacity-50" : ""
       }`}
       {...attributes}
@@ -1120,7 +1120,7 @@ export function KanbanBoard({
             }}
             style={{ maskImage: mascara, WebkitMaskImage: mascara }}
             // Barra nativa escondida: quem rola é o slider no fim da página.
-            className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex min-h-0 flex-1 items-start gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pointer-coarse:snap-x pointer-coarse:snap-proximity"
           >
             {columns.map((column) => (
               <SortableColumn

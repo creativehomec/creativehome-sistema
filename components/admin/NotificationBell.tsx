@@ -93,7 +93,7 @@ export function NotificationBell({
         }
         // O sino fica no mesmo preto e branco do resto do header; o vermelho
         // é só do contador, que é a única parte que precisa saltar.
-        className={`relative flex items-center rounded-md border border-neutral-300 px-2.5 py-1.5 text-neutral-600 transition-transform hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
+        className={`relative flex items-center justify-center rounded-md border border-neutral-300 px-2.5 py-1.5 pointer-coarse:min-w-11 text-neutral-600 transition-transform hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
       >
         <Bell aria-hidden="true" className="size-4" />
         {unreadCount > 0 ? (

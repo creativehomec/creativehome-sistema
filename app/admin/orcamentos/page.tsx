@@ -31,6 +31,7 @@ export default async function BudgetsDashboard() {
         className="flex gap-2 p-4"
       >
         <input
+          id="novo-orcamento"
           name="title"
           placeholder="Nome interno do novo orçamento (ex: Proposta — Cliente X)"
           required
@@ -45,9 +46,21 @@ export default async function BudgetsDashboard() {
       </form>
 
       {budgets.length === 0 ? (
-        <p className="border-t border-neutral-200 p-4 text-sm text-neutral-500">
-          Nenhum orçamento criado ainda. Use o formulário acima para começar.
-        </p>
+        <div className="border-t border-neutral-200 p-8 text-center">
+          <p className="text-sm font-medium text-neutral-900">
+            Nenhum orçamento criado ainda
+          </p>
+          <p className="mt-1 text-sm text-neutral-500">
+            Cada orçamento vira uma proposta com link próprio pra enviar ao
+            cliente.
+          </p>
+          <label
+            htmlFor="novo-orcamento"
+            className="mt-4 inline-flex min-h-11 cursor-pointer items-center rounded-md bg-terra-600 px-4 text-sm font-medium text-white transition-transform hover:bg-terra-700 active:scale-[0.97]"
+          >
+            Criar o primeiro orçamento
+          </label>
+        </div>
       ) : (
         <ul className="divide-y divide-neutral-200 border-t border-neutral-200">
           {budgets.map((budget) => (
