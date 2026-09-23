@@ -53,7 +53,7 @@ export default async function UsersPage() {
   const currentUsername = users.find((user) => user.id === session.userId)?.username;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-3xl py-10">
       <AdminHeader
         title="Usuários"
         trail={[{ label: "Admin", href: "/admin" }, { label: "Usuários" }]}

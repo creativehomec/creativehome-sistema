@@ -42,7 +42,7 @@ export default async function LoginPage({
       : null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex flex-1 items-center justify-center">
       <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white/90 p-8 shadow-sm backdrop-blur-sm">
         <BrandLogo className="mb-4 block h-9 w-auto text-[#a44a2b]" />
         <p className="mb-6 text-sm text-neutral-500">
