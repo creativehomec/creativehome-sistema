@@ -352,6 +352,33 @@ a {
   }
 }
 
+/* Bobby Jones: quatro cortes da mesma família, cada um é uma escolha na lista.
+   As versões Rough são pesadas (1 e 2 MB); por isso carregam só quando a peça
+   pede, e não na abertura da tela. */
+@font-face {
+  font-family: "BobbyJonesSoft";
+  src: url("/fonts/BobbyJonesSoft.otf") format("opentype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "BobbyJonesSoftOutline";
+  src: url("/fonts/BobbyJonesSoftOutline.otf") format("opentype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "BobbyRoughSoft";
+  src: url("/fonts/BobbyRoughSoft.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "BobbyRoughSoftOutline";
+  src: url("/fonts/BobbyRoughSoftOutline.ttf") format("truetype");
+  font-display: swap;
+}
+
 /*
   O painel de ferramentas do lettering nasce e morre no botão que o abriu — a
   origem da transformação é escrita no elemento. Entrar e sair pelo mesmo
@@ -662,4 +689,25 @@ a {
     padding-inline: max(2rem, env(safe-area-inset-left))
       max(2rem, env(safe-area-inset-right));
   }
+}
+
+/*
+  Alças da moldura de camada no estúdio de lettering. A moldura é escalada
+  pelo zoom da câmera, e as alças herdavam essa escala: num zoom de 5x o alvo
+  de toque de 40px virava 200px na tela e vazava pela direita. Aqui a escala é
+  desfeita, então a alça mede o mesmo em qualquer zoom.
+
+  A ordem importa: numa lista de transformações a da direita age primeiro, e é
+  o `translate` que precisa acontecer em unidades da própria alça antes de a
+  escala entrar. `--zoom` é escrito pelo laço de pintura; o 1 de reserva vale
+  enquanto ele ainda não rodou.
+*/
+@utility alca-fixa {
+  /* A origem é o canto da moldura em que a alça está ancorada, não o centro
+     do botão: encolher em torno do centro tirava a alça do canto que ela
+     serve. Com a origem no canto, ele fica parado e só a alça muda de
+     tamanho. */
+  transform-origin: var(--alca-ox, 50%) var(--alca-oy, 50%);
+  transform: scale(calc(1 / var(--zoom, 1)))
+    translate(var(--alca-x, 0), var(--alca-y, 0));
 }

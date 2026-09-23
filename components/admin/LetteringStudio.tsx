@@ -19,12 +19,14 @@ import {
   GripVertical,
   Layers,
   MoreHorizontal,
+  Minus,
   Move,
   Share2,
   Redo2,
   Undo2,
   RotateCw,
   Palette,
+  Plus,
   Smile,
   Sparkles,
   Trash2,
@@ -54,6 +56,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
 } from "react";
 import { snap, type Guia } from "@/lib/letteringSnap";
 import {
@@ -85,11 +88,20 @@ import {
 } from "@/lib/letteringStorage";
 import {
   carregarBiblioteca,
+  carregarFontesAction,
   excluirLayoutAction,
   guardarFonteAction,
   guardarLayoutAction,
 } from "@/app/admin/lettering/actions";
 import type { FonteSalva, LayoutSalvo } from "@/lib/letteringLibrary";
+import {
+  agrupadoPorCategoria,
+  catalogoDeFontes,
+  CATEGORIAS_FONTE,
+  PESOS_FONTE,
+  type FonteDaBiblioteca,
+  type OpcaoFonte,
+} from "@/lib/letteringFontesMeta";
 import { Button } from "@/components/ui/button";
 import {
   angle,
@@ -119,11 +131,23 @@ import {
 } from "@/lib/letteringDraw";
 
 const SYSTEM_FONTS = [
-  { family: "Georgia, serif", label: "Georgia" },
-  { family: "Helvetica, Arial, sans-serif", label: "Helvetica" },
-  { family: "'Times New Roman', serif", label: "Times" },
-  { family: "'Courier New', monospace", label: "Courier" },
-  { family: "Impact, sans-serif", label: "Impact" },
+  { family: '"BobbyJonesSoft"', label: "Bobby Jones Soft", category: "display" },
+  {
+    family: '"BobbyJonesSoftOutline"',
+    label: "Bobby Jones Soft Outline",
+    category: "display",
+  },
+  { family: '"BobbyRoughSoft"', label: "Bobby Rough Soft", category: "display" },
+  {
+    family: '"BobbyRoughSoftOutline"',
+    label: "Bobby Rough Soft Outline",
+    category: "display",
+  },
+  { family: "Georgia, serif", label: "Georgia", category: "serif" },
+  { family: "Helvetica, Arial, sans-serif", label: "Helvetica", category: "sans" },
+  { family: "'Times New Roman', serif", label: "Times", category: "serif" },
+  { family: "'Courier New', monospace", label: "Courier", category: "mono" },
+  { family: "Impact, sans-serif", label: "Impact", category: "display" },
 ];
 
 /** Fonte de emoji do sistema: o canvas desenha colorido, sem asset nenhum. */
@@ -154,6 +178,26 @@ const LABEL_ESCURO =
   "block text-sm font-semibold tracking-[0.01em] text-neutral-300";
 
 const BOTAO_CLARO = "bg-white text-neutral-900 hover:bg-neutral-200";
+
+/**
+ * Agrupa a biblioteca por categoria, na ordem de CATEGORIAS_FONTE, com as
+ * fontes sem categoria no fim. Só entram grupos que têm fonte.
+ */
+function gruposDeFonte(fontes: FonteSalva[]): [string, FonteSalva[]][] {
+  const ordem = [...CATEGORIAS_FONTE, ""];
+  return ordem
+    .map(
+      (categoria) =>
+        [
+          categoria,
+          fontes.filter(
+            (f) =>
+              (ordem.includes(f.category) ? f.category : "") === categoria,
+          ),
+        ] as [string, FonteSalva[]],
+    )
+    .filter(([, lista]) => lista.length > 0);
+}
 
 /** Xadrez de fundo: é assim que se enxerga que o PNG saiu mesmo transparente. */
 /** A pessoa pediu menos movimento no sistema? Então nada de deslizar sozinho. */
@@ -263,7 +307,9 @@ export function LetteringStudio() {
       setHistory((h) => despachar(h, { type: "selecionar", id })),
     [],
   );
-  const [fonts, setFonts] = useState(SYSTEM_FONTS);
+  const [fonts, setFonts] = useState<OpcaoFonte[]>(
+    SYSTEM_FONTS.map((f) => ({ ...f, weight: "" })),
+  );
   const [fontError, setFontError] = useState<string | null>(null);
   const [trim, setTrim] = useState(true);
   /** null = dock fechada. Um painel de cada vez, que é o que cabe no celular. */
@@ -562,8 +608,16 @@ export function LetteringStudio() {
   const alturaVisivelRef = useRef(STAGE.height);
   /** A pintura vista de fora, pra quem é declarado antes dela. */
   const pinturaRef = useRef<() => void>(() => {});
-  /** A vista se acomoda uma vez na abertura, e não a cada remedida. */
-  const jaEnquadrouRef = useRef(false);
+  /**
+   * A vista ainda é a da abertura, ou a pessoa já mexeu nela?
+   *
+   * Enquanto ninguém mexeu, toda mudança de tamanho da janela reenquadra: no
+   * iPhone a barra do Safari some na primeira rolagem e o palco muda de altura
+   * depois de a tela já ter aberto. Sem isso, o enquadramento nascia certo pra
+   * uma altura que durava um segundo.
+   */
+  const vistaTocadaRef = useRef(false);
+  const enquadrarRef = useRef<() => void>(() => {});
   /**
    * Deslocamento da vista, em unidades do palco.
    *
@@ -620,6 +674,7 @@ export function LetteringStudio() {
             pinturaRef.current();
           }
         }
+        if (!vistaTocadaRef.current) enquadrarRef.current();
       }
     };
     medir();
@@ -733,6 +788,11 @@ export function LetteringStudio() {
         moldura.style.transform =
           `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) ` +
           `rotate(${layer.rotation}deg) scale(${z})`;
+        // As alças desfazem esta escala pra continuarem do tamanho do dedo.
+        if (moldura.dataset.z !== String(z)) {
+          moldura.dataset.z = String(z);
+          moldura.style.setProperty("--zoom", String(z));
+        }
       } else {
         moldura.hidden = true;
       }
@@ -824,7 +884,23 @@ export function LetteringStudio() {
     pintar();
   }, [selectedId, grade, pintar]);
 
-  /** A biblioteca é buscada quando a aba abre, não na carga da tela. */
+  /**
+   * As fontes vêm na carga da tela, e não só quando a biblioteca abre: elas
+   * aparecem no seletor de fonte junto com as do app.
+   */
+  useEffect(() => {
+    let cancelado = false;
+    carregarFontesAction()
+      .then((fontes) => {
+        if (!cancelado) setFontesSalvas(fontes);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  /** Os layouts continuam sendo buscados quando a aba abre. */
   useEffect(() => {
     if (dock !== "biblioteca") return;
     let cancelado = false;
@@ -911,6 +987,7 @@ export function LetteringStudio() {
    * pra longe, e escolhe o zoom que faz tudo caber com folga.
    */
   const centralizar = useCallback(() => {
+    vistaTocadaRef.current = true;
     const caixas = camadasRef.current
       .filter((l) => !l.hidden)
       .map((l) => {
@@ -919,16 +996,35 @@ export function LetteringStudio() {
       })
       .filter((c): c is NonNullable<typeof c> => c !== null);
 
+    // Sem nada desenhado, centralizar é o mesmo que voltar pra abertura: o
+    // palco inteiro na tela.
+    const palcoInteiro = clamp(
+      Math.min(1, alturaVisivelRef.current / STAGE.height),
+      ZOOM_MIN,
+      ZOOM_MAX,
+    );
+
     const conteudo = unionBounds(caixas);
     if (!conteudo) {
-      animarVista({ x: 0, y: 0, z: 1 });
+      animarVista({
+        x: STAGE.width / 2 - STAGE.width / 2 / palcoInteiro,
+        y: STAGE.height / 2 - alturaVisivelRef.current / 2 / palcoInteiro,
+        z: palcoInteiro,
+      });
       return;
     }
 
     const largura = Math.max(1, conteudo.right - conteudo.left);
     const altura = Math.max(1, conteudo.bottom - conteudo.top);
+    // O zoom não passa de 1: centralizar é trazer de volta o que sumiu, não
+    // aproximar. Numa peça pequena, aproximar abria a tela por dentro dela —
+    // e chegar perto é escolha de quem está trabalhando, com a pinça.
     const z = clamp(
-      Math.min(STAGE.width / largura, alturaVisivelRef.current / altura) * 0.85,
+      Math.min(
+        1,
+        Math.min(STAGE.width / largura, alturaVisivelRef.current / altura) *
+          0.85,
+      ),
       ZOOM_MIN,
       ZOOM_MAX,
     );
@@ -941,15 +1037,35 @@ export function LetteringStudio() {
   }, [animarVista]);
 
   /**
-   * Na abertura a vista enquadra o que está desenhado. O palco é maior que a
-   * janela em quase toda tela, e começar no canto dele deixaria a peça fora de
-   * vista sem motivo.
+   * Enquadra o palco inteiro na janela.
+   *
+   * A abertura enquadrava o que estava desenhado, e uma peça pequena levava a
+   * vista a 3 ou 4 vezes — a tela abria por dentro do lettering, com as alças
+   * gigantes e metade do palco fora. Quem chega quer ver a folha toda; passar
+   * perto é escolha de quem já está trabalhando.
+   *
+   * O zoom não passa de 1: acima disso o palco já não caberia na largura.
    */
+  const enquadrarPalco = useCallback(() => {
+    const z = clamp(
+      Math.min(1, alturaVisivelRef.current / STAGE.height),
+      ZOOM_MIN,
+      ZOOM_MAX,
+    );
+    camRef.current = {
+      x: STAGE.width / 2 - STAGE.width / 2 / z,
+      y: STAGE.height / 2 - alturaVisivelRef.current / 2 / z,
+      z,
+    };
+    pintar();
+  }, [pintar]);
+
   useEffect(() => {
-    if (jaEnquadrouRef.current || sizes.size === 0) return;
-    jaEnquadrouRef.current = true;
-    centralizar();
-  }, [sizes, centralizar]);
+    enquadrarRef.current = enquadrarPalco;
+    // O efeito que mede a janela roda antes deste e só encontra a função
+    // vazia: o primeiro enquadramento é este aqui.
+    if (!vistaTocadaRef.current) enquadrarPalco();
+  }, [enquadrarPalco]);
 
   /** Guarda o rascunho a cada mudança: fechar a aba não pode custar o layout. */
   useEffect(() => {
@@ -1332,6 +1448,9 @@ export function LetteringStudio() {
   }, []);
 
   function onPointerDown(e: React.PointerEvent) {
+    // A partir daqui a vista é de quem está trabalhando: a janela pode mudar
+    // de tamanho à vontade que ninguém reenquadra por cima.
+    vistaTocadaRef.current = true;
     // Uma animação em curso é interrompida pelo toque: quem manda é o dedo.
     if (animacaoRef.current !== null) {
       cancelAnimationFrame(animacaoRef.current);
@@ -1867,7 +1986,7 @@ export function LetteringStudio() {
    * buscado da rota do app, que exige sessão — o bucket é privado.
    */
   const registrarFonte = useCallback(
-    async (fonte: FonteSalva) => {
+    async (fonte: FonteDaBiblioteca) => {
       const familia = `"${fonte.family}"`;
       if (fonts.some((f) => f.family === familia)) return familia;
       try {
@@ -1880,7 +1999,12 @@ export function LetteringStudio() {
         esqueceMedidas();
         setFonts((atual) => [
           ...atual,
-          { family: familia, label: fonte.label },
+          {
+            family: familia,
+            label: fonte.label,
+            category: fonte.category,
+            weight: fonte.weight,
+          },
         ]);
         return familia;
       } catch {
@@ -1889,6 +2013,22 @@ export function LetteringStudio() {
       }
     },
     [fonts],
+  );
+
+  /**
+   * Aplica uma opção do seletor. Fonte da biblioteca só existe no navegador
+   * depois de registrada, então o arquivo é buscado aqui, sob demanda.
+   */
+  const aplicarFonte = useCallback(
+    async (opcao: OpcaoFonte) => {
+      if (opcao.salva && !fonts.some((f) => f.family === opcao.family)) {
+        const familia = await registrarFonte(opcao.salva);
+        if (familia) patch({ family: familia });
+        return;
+      }
+      patch({ family: opcao.family });
+    },
+    [fonts, patch, registrarFonte],
   );
 
   async function salvarNaBiblioteca() {
@@ -1986,7 +2126,10 @@ export function LetteringStudio() {
       // O mesmo texto passa a ter outra forma: o que foi medido antes vira
       // mentira.
       esqueceMedidas();
-      setFonts((current) => [...current, { family: `"${custom}"`, label }]);
+      setFonts((current) => [
+        ...current,
+        { family: `"${custom}"`, label, category: "", weight: "" },
+      ]);
       patch({ family: `"${custom}"` });
     } catch {
       setFontError(
@@ -2004,7 +2147,15 @@ export function LetteringStudio() {
   const alterado =
     aberto !== null && JSON.stringify(layers) !== aberto.assinatura;
 
-  const faltando = fontesFaltando(
+  const catalogo = catalogoDeFontes(fonts, fontesSalvas);
+  const grupoAtual =
+    catalogo.find((g) =>
+      g.opcoes.some((o) => o.family === selected?.family),
+    ) ?? null;
+  const pesoAtual =
+    grupoAtual?.opcoes.find((o) => o.family === selected?.family)?.weight ?? "";
+
+    const faltando = fontesFaltando(
     layers,
     fonts.map((f) => f.family),
   );
@@ -2059,30 +2210,26 @@ export function LetteringStudio() {
                 visível, mas impossível de tocar. */}
             {(
               [
-                [
-                  "top-0 left-0 -translate-x-1/2 -translate-y-1/2",
-                  "Aumentar pelo canto superior esquerdo",
-                ],
-                [
-                  "top-0 right-0 translate-x-1/2 -translate-y-1/2",
-                  "Aumentar pelo canto superior direito",
-                ],
-                [
-                  "bottom-0 left-0 -translate-x-1/2 translate-y-1/2",
-                  "Aumentar pelo canto inferior esquerdo",
-                ],
-                [
-                  "bottom-0 right-0 translate-x-1/2 translate-y-1/2",
-                  "Aumentar pelo canto inferior direito",
-                ],
+                ["top-0 left-0", "-50%", "-50%", "0", "0", "Aumentar pelo canto superior esquerdo"],
+                ["top-0 right-0", "50%", "-50%", "100%", "0", "Aumentar pelo canto superior direito"],
+                ["bottom-0 left-0", "-50%", "50%", "0", "100%", "Aumentar pelo canto inferior esquerdo"],
+                ["bottom-0 right-0", "50%", "50%", "100%", "100%", "Aumentar pelo canto inferior direito"],
               ] as const
-            ).map(([posicao, rotulo]) => (
+            ).map(([posicao, dx, dy, ox, oy, rotulo]) => (
               <button
                 key={posicao}
                 type="button"
                 aria-label={rotulo}
                 onPointerDown={(e) => onAlcaDown(e, { escala: true })}
-                className={`pointer-events-auto absolute ${posicao} grid size-10 touch-none place-items-center`}
+                style={
+                  {
+                    "--alca-x": dx,
+                    "--alca-y": dy,
+                    "--alca-ox": ox,
+                    "--alca-oy": oy,
+                  } as CSSProperties
+                }
+                className={`alca-fixa pointer-events-auto absolute ${posicao} grid size-10 touch-none place-items-center`}
               >
                 <span className="block size-3.5 rounded-full border-2 border-neutral-900 bg-white shadow-sm" />
               </button>
@@ -2094,7 +2241,15 @@ export function LetteringStudio() {
               type="button"
               aria-label="Girar a camada"
               onPointerDown={(e) => onAlcaDown(e, { giro: true })}
-              className="pointer-events-auto absolute -top-14 left-1/2 grid size-11 -translate-x-1/2 touch-none place-items-center rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-md"
+              style={
+                {
+                  "--alca-x": "-50%",
+                  "--alca-y": "calc(-100% - 0.75rem)",
+                  "--alca-ox": "0",
+                  "--alca-oy": "0",
+                } as CSSProperties
+              }
+              className="alca-fixa pointer-events-auto absolute top-0 left-1/2 grid size-11 touch-none place-items-center rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-md"
             >
               <RotateCw aria-hidden="true" className="size-4" />
             </button>
@@ -2447,35 +2602,51 @@ export function LetteringStudio() {
                 </p>
 
                 {fontesSalvas.length > 0 ? (
-                  <ul className="space-y-1">
-                    {fontesSalvas.map((fonte, i) => (
-                      <li
-                        key={fonte.id}
-                        style={{ animationDelay: `${Math.min(i, 7) * 25}ms` }}
-                        className={`flex items-center gap-1 rounded-md border border-white/15 ${
-                          destaque === fonte.id
-                            ? "lettering-item-novo"
-                            : "lettering-item"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const familia = await registrarFonte(fonte);
-                            if (familia) patch({ family: familia });
-                          }}
-                          className="flex-1 truncate px-3 py-3 text-left text-sm"
-                        >
-                          {fonte.label}
-                          {fonte.client ? (
-                            <span className="ml-2 text-xs text-neutral-400">
-                              {fonte.client}
-                            </span>
-                          ) : null}
-                        </button>
-                      </li>
+                  <div className="space-y-2">
+                    {gruposDeFonte(fontesSalvas).map(([categoria, doGrupo]) => (
+                      <div key={categoria} className="space-y-1">
+                        <p className="text-xs tracking-[0.08em] text-neutral-500 uppercase">
+                          {categoria || "sem categoria"}
+                        </p>
+                        <ul className="space-y-1">
+                          {doGrupo.map((fonte, i) => (
+                            <li
+                              key={fonte.id}
+                              style={{
+                                animationDelay: `${Math.min(i, 7) * 25}ms`,
+                              }}
+                              className={`flex items-center gap-1 rounded-md border border-white/15 ${
+                                destaque === fonte.id
+                                  ? "lettering-item-novo"
+                                  : "lettering-item"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const familia = await registrarFonte(fonte);
+                                  if (familia) patch({ family: familia });
+                                }}
+                                className="flex-1 truncate px-3 py-3 text-left text-sm"
+                              >
+                                {fonte.label}
+                                {fonte.weight ? (
+                                  <span className="ml-2 text-xs text-neutral-400">
+                                    {fonte.weight}
+                                  </span>
+                                ) : null}
+                                {fonte.client ? (
+                                  <span className="ml-2 text-xs text-neutral-400">
+                                    {fonte.client}
+                                  </span>
+                                ) : null}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 ) : null}
 
                 <form
@@ -2510,6 +2681,32 @@ export function LetteringStudio() {
                       required
                       className={INPUT_ESCURO}
                     />
+                    <select
+                      name="peso"
+                      defaultValue=""
+                      aria-label="Peso da fonte"
+                      className={INPUT_ESCURO}
+                    >
+                      <option value="">Peso</option>
+                      {PESOS_FONTE.map((peso) => (
+                        <option key={peso} value={peso}>
+                          {peso}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      name="categoria"
+                      defaultValue=""
+                      aria-label="Categoria da fonte"
+                      className={INPUT_ESCURO}
+                    >
+                      <option value="">Categoria</option>
+                      {CATEGORIAS_FONTE.map((categoria) => (
+                        <option key={categoria} value={categoria}>
+                          {categoria}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <input
                     type="file"
@@ -2785,16 +2982,73 @@ export function LetteringStudio() {
                           </label>
                           <select
                             id="lettering-font"
-                            value={selected.family}
-                            onChange={(e) => patch({ family: e.target.value })}
+                            value={grupoAtual?.label ?? ""}
+                            onChange={(e) => {
+                              const grupo = catalogo.find(
+                                (g) => g.label === e.target.value,
+                              );
+                              if (!grupo) return;
+                              // Mantém o peso atual quando a fonte nova tem
+                              // esse peso: trocar de família não é trocar de
+                              // peso.
+                              const opcao =
+                                grupo.opcoes.find(
+                                  (o) => o.weight === pesoAtual,
+                                ) ??
+                                grupo.opcoes.find(
+                                  (o) => o.weight === "Regular",
+                                ) ??
+                                grupo.opcoes[0];
+                              void aplicarFonte(opcao);
+                            }}
                             className={INPUT}
                           >
-                            {fonts.map((font) => (
-                              <option key={font.family} value={font.family}>
-                                {font.label}
-                              </option>
-                            ))}
+                            {!grupoAtual ? <option value="">—</option> : null}
+                            {agrupadoPorCategoria(catalogo).map(
+                              ([categoria, grupos]) => (
+                                <optgroup
+                                  key={categoria}
+                                  label={categoria || "sem categoria"}
+                                >
+                                  {grupos.map((grupo) => (
+                                    <option
+                                      key={grupo.label}
+                                      value={grupo.label}
+                                    >
+                                      {grupo.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ),
+                            )}
                           </select>
+                          {grupoAtual && grupoAtual.opcoes.length > 1 ? (
+                            <>
+                              <label
+                                className={LABEL}
+                                htmlFor="lettering-font-weight"
+                              >
+                                Peso
+                              </label>
+                              <select
+                                id="lettering-font-weight"
+                                value={pesoAtual}
+                                onChange={(e) => {
+                                  const opcao = grupoAtual.opcoes.find(
+                                    (o) => o.weight === e.target.value,
+                                  );
+                                  if (opcao) void aplicarFonte(opcao);
+                                }}
+                                className={INPUT}
+                              >
+                                {grupoAtual.opcoes.map((o) => (
+                                  <option key={o.family} value={o.weight}>
+                                    {o.weight || "Regular"}
+                                  </option>
+                                ))}
+                              </select>
+                            </>
+                          ) : null}
                           <label className="inline-flex cursor-pointer items-center gap-2 py-2 text-sm text-neutral-600">
                             <Upload aria-hidden="true" className="size-4" />
                             Carregar fonte do cliente
@@ -2821,38 +3075,26 @@ export function LetteringStudio() {
 
                   {aba === "estilo" ? (
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className={LABEL} htmlFor="lettering-size">
-                          Tamanho
-                        </label>
-                        <input
-                          id="lettering-size"
-                          type="number"
-                          min={8}
-                          max={900}
-                          value={selected.size}
-                          onChange={(e) =>
-                            patch({ size: Number(e.target.value) || 8 })
-                          }
-                          className={INPUT}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className={LABEL} htmlFor="lettering-rotation">
-                          Girar
-                        </label>
-                        <input
-                          id="lettering-rotation"
-                          type="number"
-                          min={-180}
-                          max={180}
-                          value={selected.rotation}
-                          onChange={(e) =>
-                            patch({ rotation: Number(e.target.value) || 0 })
-                          }
-                          className={INPUT}
-                        />
-                      </div>
+                      <CampoNumero
+                        id="lettering-size"
+                        rotulo="Tamanho"
+                        valor={selected.size}
+                        min={8}
+                        max={900}
+                        onChange={(size) => patch({ size }, "campo:size")}
+                        onFim={fecharPasso}
+                      />
+                      <CampoNumero
+                        id="lettering-rotation"
+                        rotulo="Girar"
+                        valor={selected.rotation}
+                        min={-180}
+                        max={180}
+                        onChange={(rotation) =>
+                          patch({ rotation }, "campo:rotation")
+                        }
+                        onFim={fecharPasso}
+                      />
                       <div className="space-y-1.5">
                         <label className={LABEL} htmlFor="lettering-color">
                           Cor
@@ -2882,67 +3124,44 @@ export function LetteringStudio() {
                           <option value="right">Direita</option>
                         </select>
                       </div>
-                      <div className="space-y-1.5">
-                        <label
-                          className={LABEL}
-                          htmlFor="lettering-line-height"
-                        >
-                          Entrelinha
-                        </label>
-                        <input
-                          id="lettering-line-height"
-                          type="number"
-                          step={0.05}
-                          min={0.5}
-                          max={3}
-                          value={selected.lineHeight}
-                          onChange={(e) =>
-                            patch({ lineHeight: Number(e.target.value) || 1 })
-                          }
-                          className={INPUT}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className={LABEL} htmlFor="lettering-tracking">
-                          Espaçamento
-                        </label>
-                        <input
-                          id="lettering-tracking"
-                          type="number"
-                          value={selected.tracking}
-                          onChange={(e) =>
-                            patch({ tracking: Number(e.target.value) || 0 })
-                          }
-                          className={INPUT}
-                        />
-                      </div>
+                      <CampoNumero
+                        id="lettering-line-height"
+                        rotulo="Entrelinha"
+                        valor={selected.lineHeight}
+                        min={0.5}
+                        max={3}
+                        passo={0.05}
+                        onChange={(lineHeight) =>
+                          patch({ lineHeight }, "campo:lineHeight")
+                        }
+                        onFim={fecharPasso}
+                      />
+                      <CampoNumero
+                        id="lettering-tracking"
+                        rotulo="Espaçamento"
+                        valor={selected.tracking}
+                        onChange={(tracking) =>
+                          patch({ tracking }, "campo:tracking")
+                        }
+                        onFim={fecharPasso}
+                      />
                     </div>
                   ) : null}
 
                   {aba === "efeitos" ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <label className={LABEL} htmlFor="lettering-stroke">
-                            Contorno
-                          </label>
-                          <input
-                            id="lettering-stroke"
-                            type="number"
-                            min={0}
-                            max={60}
-                            value={selected.stroke}
-                            onChange={(e) =>
-                              patch({
-                                stroke: Math.max(
-                                  0,
-                                  Number(e.target.value) || 0,
-                                ),
-                              })
-                            }
-                            className={INPUT}
-                          />
-                        </div>
+                        <CampoNumero
+                          id="lettering-stroke"
+                          rotulo="Contorno"
+                          valor={selected.stroke}
+                          min={0}
+                          max={60}
+                          onChange={(stroke) =>
+                            patch({ stroke }, "campo:stroke")
+                          }
+                          onFim={fecharPasso}
+                        />
                         <div className="space-y-1.5">
                           <label
                             className={LABEL}
@@ -2974,29 +3193,16 @@ export function LetteringStudio() {
                       </label>
                       {selected.shadow ? (
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <label
-                              className={LABEL}
-                              htmlFor="lettering-shadow-blur"
-                            >
-                              Desfoque
-                            </label>
-                            <input
-                              id="lettering-shadow-blur"
-                              type="number"
-                              min={0}
-                              value={selected.shadowBlur}
-                              onChange={(e) =>
-                                patch({
-                                  shadowBlur: Math.max(
-                                    0,
-                                    Number(e.target.value) || 0,
-                                  ),
-                                })
-                              }
-                              className={INPUT}
-                            />
-                          </div>
+                          <CampoNumero
+                            id="lettering-shadow-blur"
+                            rotulo="Desfoque"
+                            valor={selected.shadowBlur}
+                            min={0}
+                            onChange={(shadowBlur) =>
+                              patch({ shadowBlur }, "campo:shadowBlur")
+                            }
+                            onFim={fecharPasso}
+                          />
                           <div className="space-y-1.5">
                             <label
                               className={LABEL}
@@ -3014,40 +3220,24 @@ export function LetteringStudio() {
                               className="h-11 w-full rounded-md border border-neutral-200 bg-white p-1"
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <label
-                              className={LABEL}
-                              htmlFor="lettering-shadow-x"
-                            >
-                              Deslocar X
-                            </label>
-                            <input
-                              id="lettering-shadow-x"
-                              type="number"
-                              value={selected.shadowX}
-                              onChange={(e) =>
-                                patch({ shadowX: Number(e.target.value) || 0 })
-                              }
-                              className={INPUT}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <label
-                              className={LABEL}
-                              htmlFor="lettering-shadow-y"
-                            >
-                              Deslocar Y
-                            </label>
-                            <input
-                              id="lettering-shadow-y"
-                              type="number"
-                              value={selected.shadowY}
-                              onChange={(e) =>
-                                patch({ shadowY: Number(e.target.value) || 0 })
-                              }
-                              className={INPUT}
-                            />
-                          </div>
+                          <CampoNumero
+                            id="lettering-shadow-x"
+                            rotulo="Deslocar X"
+                            valor={selected.shadowX}
+                            onChange={(shadowX) =>
+                              patch({ shadowX }, "campo:shadowX")
+                            }
+                            onFim={fecharPasso}
+                          />
+                          <CampoNumero
+                            id="lettering-shadow-y"
+                            rotulo="Deslocar Y"
+                            valor={selected.shadowY}
+                            onChange={(shadowY) =>
+                              patch({ shadowY }, "campo:shadowY")
+                            }
+                            onFim={fecharPasso}
+                          />
                         </div>
                       ) : null}
 
@@ -3079,50 +3269,25 @@ export function LetteringStudio() {
                               className="h-11 w-full rounded-md border border-neutral-200 bg-white p-1"
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <label
-                              className={LABEL}
-                              htmlFor="lettering-box-radius"
-                            >
-                              Cantos
-                            </label>
-                            <input
-                              id="lettering-box-radius"
-                              type="number"
-                              min={0}
-                              value={selected.boxRadius}
-                              onChange={(e) =>
-                                patch({
-                                  boxRadius: Math.max(
-                                    0,
-                                    Number(e.target.value) || 0,
-                                  ),
-                                })
-                              }
-                              className={INPUT}
-                            />
-                          </div>
-                          <div className="col-span-2 space-y-1.5">
-                            <label
-                              className={LABEL}
-                              htmlFor="lettering-box-padding"
-                            >
-                              Respiro
-                            </label>
-                            <input
+                          <CampoNumero
+                            id="lettering-box-radius"
+                            rotulo="Cantos"
+                            valor={selected.boxRadius}
+                            min={0}
+                            onChange={(boxRadius) =>
+                              patch({ boxRadius }, "campo:boxRadius")
+                            }
+                            onFim={fecharPasso}
+                          />
+                          <div className="col-span-2">
+                            <CampoNumero
                               id="lettering-box-padding"
-                              type="number"
-                              min={0}
-                              value={selected.boxPadding}
-                              onChange={(e) =>
-                                patch({
-                                  boxPadding: Math.max(
-                                    0,
-                                    Number(e.target.value) || 0,
-                                  ),
-                                })
+                              rotulo="Respiro"
+                              valor={selected.boxPadding}
+                              onChange={(boxPadding) =>
+                                patch({ boxPadding }, "campo:boxPadding")
                               }
-                              className={INPUT}
+                              onFim={fecharPasso}
                             />
                           </div>
                         </div>
@@ -3217,10 +3382,14 @@ export function LetteringStudio() {
               // O nome aparece só na ferramenta aberta. Oito rótulos lado a
               // lado não cabem sem cortar palavra, e rótulo cortado não ajuda
               // ninguém — o da vez basta pra situar.
-              className={`flex min-w-0 shrink-0 items-center gap-1.5 rounded-[22px] px-3 py-2.5 text-[11px] font-medium tracking-[0.01em] transition-[transform,background-color,color] duration-150 active:scale-95 ${
+              // Oito ícones mais o rótulo da ferramenta aberta não cabiam numa
+              // linha de 375px: a fila estourava a tela por 22px. O respiro
+              // lateral das fechadas é o que cede — só a aberta mantém o dela,
+              // porque é a única que carrega texto ao lado do ícone.
+              className={`flex min-w-0 items-center gap-1.5 rounded-[22px] py-2.5 text-[11px] font-medium tracking-[0.01em] transition-[transform,background-color,color] duration-150 active:scale-95 ${
                 dock === id
-                  ? "bg-neutral-900 text-white"
-                  : "flex-1 justify-center text-neutral-600"
+                  ? "shrink-0 bg-neutral-900 px-3 text-white"
+                  : "flex-1 justify-center px-2 text-neutral-600 sm:px-3"
               }`}
             >
               <Icone aria-hidden="true" className="size-5 shrink-0" />
@@ -3298,6 +3467,222 @@ export function LetteringStudio() {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Campo numérico com botão de menos e de mais.
+ *
+ * As setinhas do navegador só existem no computador, e o teclado numérico do
+ * iPhone não tem sinal de menos: no celular não havia como chegar num valor
+ * negativo. Os botões resolvem os dois casos de uma vez.
+ *
+ * Enquanto o campo está em foco, o que a pessoa digitou vale como está — sem
+ * isso, apagar tudo pra escrever "-8" virava 0 na primeira tecla, e o menos
+ * sozinho nunca chegava a ser um número.
+ */
+function CampoNumero({
+  id,
+  rotulo,
+  valor,
+  min,
+  max,
+  passo = 1,
+  onChange,
+  onFim,
+}: {
+  id: string;
+  rotulo: string;
+  valor: number;
+  min?: number;
+  max?: number;
+  passo?: number;
+  onChange: (valor: number) => void;
+  onFim: () => void;
+}) {
+  const [rascunho, setRascunho] = useState<string | null>(null);
+
+  const dentro = (n: number) =>
+    clamp(n, min ?? Number.NEGATIVE_INFINITY, max ?? Number.POSITIVE_INFINITY);
+
+  // Casas decimais vêm do passo: somar 0,05 em ponto flutuante rende
+  // 1,0500000000000003, e o campo mostraria isso.
+  const casas = (String(passo).split(".")[1] ?? "").length;
+
+  // O laço da repetição não passa pelo React e enxergaria um valor velho a
+  // cada quadro; o ref é o valor de agora.
+  const valorRef = useRef(valor);
+  valorRef.current = valor;
+  const seguraRef = useRef<number | null>(null);
+  const veioDoDedoRef = useRef(false);
+
+  const pararLaco = () => {
+    if (seguraRef.current === null) return;
+    cancelAnimationFrame(seguraRef.current);
+    seguraRef.current = null;
+  };
+
+  const andar = (direcao: number, multiplicador = 1) => {
+    const atual = valorRef.current;
+    const proximo = Number(
+      dentro(atual + direcao * passo * multiplicador).toFixed(casas),
+    );
+    if (proximo === atual) {
+      // Chegou no limite: o botão fica desabilitado e o dedo levantado nele
+      // não avisaria mais ninguém — o laço se encerra sozinho.
+      pararLaco();
+      return;
+    }
+    valorRef.current = proximo;
+    onChange(proximo);
+  };
+
+  /**
+   * Segurar anda sozinho, e cada vez mais rápido.
+   *
+   * De um em um, chegar num espaçamento de -100 custava cem toques. Agora o
+   * primeiro toque anda um — que é o ajuste fino que a pessoa espera de um
+   * toque curto — e, se o dedo ficar, a repetição começa devagar e vai
+   * aumentando o salto, que é o que atravessa uma faixa grande em segundos.
+   */
+  const segurar = (direcao: number) => {
+    setRascunho(null);
+    andar(direcao);
+
+    const inicio = performance.now();
+    let ultimo = inicio;
+
+    const quadro = (agora: number) => {
+      const desde = agora - inicio;
+      // A pausa antes de começar a repetir é o que deixa um toque curto valer
+      // exatamente um passo.
+      if (desde > 350) {
+        const intervalo = desde > 1200 ? 40 : 90;
+        // Dez de cada vez é o teto: acima disso o valor passa voando pelo
+        // ponto que a pessoa queria e ela volta a caçar de um em um.
+        const multiplicador = desde > 2500 ? 10 : desde > 1400 ? 5 : 1;
+        if (agora - ultimo >= intervalo) {
+          ultimo = agora;
+          andar(direcao, multiplicador);
+        }
+      }
+      seguraRef.current = requestAnimationFrame(quadro);
+    };
+
+    seguraRef.current = requestAnimationFrame(quadro);
+  };
+
+  const soltar = () => {
+    if (seguraRef.current === null) return;
+    pararLaco();
+    // Todo o segurar vira um passo só no desfazer.
+    onFim();
+  };
+
+  // Campo desmontado com o dedo em cima: o laço morre junto, senão continuaria
+  // pedindo quadros pra um componente que já saiu.
+  useEffect(
+    () => () => {
+      if (seguraRef.current !== null) cancelAnimationFrame(seguraRef.current);
+    },
+    [],
+  );
+
+  const noLimite = (direcao: number) =>
+    direcao < 0 ? min !== undefined && valor <= min : max !== undefined && valor >= max;
+
+  const BOTAO =
+    "grid w-11 shrink-0 place-items-center rounded-md border border-neutral-200 text-neutral-700 transition-transform duration-100 active:scale-95 disabled:opacity-40";
+
+  return (
+    <div className="space-y-1.5">
+      <label className={LABEL} htmlFor={id}>
+        {rotulo}
+      </label>
+      <div className="flex items-stretch gap-1">
+        <button
+          type="button"
+          aria-label={`Diminuir ${rotulo}`}
+          disabled={noLimite(-1)}
+          onPointerDown={(e) => {
+            veioDoDedoRef.current = true;
+            // O dedo pode escorregar pra fora do botão; capturado, o soltar
+            // continua chegando aqui. Nem todo ponteiro aceita captura.
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            } catch {
+              // segue sem captura
+            }
+            segurar(-1);
+          }}
+          onPointerUp={soltar}
+          onPointerCancel={soltar}
+          // Teclado não dispara ponteiro: aí o clique é que anda um passo.
+          onClick={() => {
+            if (veioDoDedoRef.current) {
+              veioDoDedoRef.current = false;
+              return;
+            }
+            andar(-1);
+            onFim();
+          }}
+          className={`${BOTAO} touch-none`}
+        >
+          <Minus aria-hidden="true" className="size-4" />
+        </button>
+        <input
+          id={id}
+          type="number"
+          inputMode="decimal"
+          min={min}
+          max={max}
+          step={passo}
+          value={rascunho ?? String(valor)}
+          onChange={(e) => {
+            const texto = e.target.value;
+            setRascunho(texto);
+            const n = Number(texto);
+            if (texto !== "" && texto !== "-" && Number.isFinite(n)) {
+              onChange(dentro(n));
+            }
+          }}
+          onBlur={() => {
+            setRascunho(null);
+            onFim();
+          }}
+          className={`${INPUT} min-w-0 flex-1 text-center`}
+        />
+        <button
+          type="button"
+          aria-label={`Aumentar ${rotulo}`}
+          disabled={noLimite(1)}
+          onPointerDown={(e) => {
+            veioDoDedoRef.current = true;
+            // O dedo pode escorregar pra fora do botão; capturado, o soltar
+            // continua chegando aqui. Nem todo ponteiro aceita captura.
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            } catch {
+              // segue sem captura
+            }
+            segurar(1);
+          }}
+          onPointerUp={soltar}
+          onPointerCancel={soltar}
+          onClick={() => {
+            if (veioDoDedoRef.current) {
+              veioDoDedoRef.current = false;
+              return;
+            }
+            andar(1);
+            onFim();
+          }}
+          className={`${BOTAO} touch-none`}
+        >
+          <Plus aria-hidden="true" className="size-4" />
+        </button>
+      </div>
     </div>
   );
 }
