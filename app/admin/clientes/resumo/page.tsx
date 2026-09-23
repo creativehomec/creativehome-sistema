@@ -6,7 +6,7 @@ import {
   getYearTotals,
   listInvoiceYears,
 } from "@/lib/billing";
-import { getCurrentUsername } from "@/lib/session";
+import { getAllowedFeatures, getCurrentUsername } from "@/lib/session";
 import { formatBRL } from "@/lib/billingTypes";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +17,11 @@ export default async function ResumoPage({
   searchParams: Promise<{ ano?: string; cliente?: string }>;
 }) {
   const params = await searchParams;
-  const [years, overdue, username] = await Promise.all([
+  const [years, overdue, username, features] = await Promise.all([
     listInvoiceYears(),
     getOverdueByClient(),
     getCurrentUsername(),
+    getAllowedFeatures(),
   ]);
 
   const year = Number(params.ano) || years[0] || new Date().getFullYear();
@@ -68,7 +69,7 @@ export default async function ResumoPage({
       />
 
       <div className="mb-6">
-        <ClientTabs />
+        <ClientTabs features={features} />
       </div>
 
       <form

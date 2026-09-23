@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getInvoice } from "@/lib/billing";
 import { renderInvoicePdfBuffer } from "@/components/pdf/InvoicePdfDocument";
 import { DEFAULT_INVOICE_CLOSING } from "@/lib/billingTypes";
+import { requireFeature } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
  * essa lista é dinheiro de cliente.
  */
 export async function GET(request: Request) {
+  // Route handler não passa pelo layout da área.
+  await requireFeature("financeiro");
   const url = new URL(request.url);
   const clientId = url.searchParams.get("cliente");
   const month = url.searchParams.get("mes");

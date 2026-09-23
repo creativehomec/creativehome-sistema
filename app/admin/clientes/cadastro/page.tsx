@@ -3,26 +3,30 @@ import { ClientTabs } from "@/components/admin/ClientTabs";
 import { ClientRegistry, type ClientSummary } from "@/components/admin/ClientRegistry";
 import { getYearTotals } from "@/lib/billing";
 import { listGalleryClients } from "@/lib/galleries";
-import { getCurrentUsername } from "@/lib/session";
+import { getAllowedFeatures, getCurrentUsername } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientesCadastroPage() {
   const year = new Date().getFullYear();
-  const [todos, totals, username] = await Promise.all([
+  const [todos, totals, username, features] = await Promise.all([
     listGalleryClients({ includeArchived: true }),
     getYearTotals(year),
     getCurrentUsername(),
+    getAllowedFeatures(),
   ]);
 
   const clients = todos.filter((client) => !client.archived_at);
   const archived = todos.filter((client) => client.archived_at);
 
+  // Valor faturado é dado do financeiro: quem não tem a área liberada vê só
+  // a contagem de entregas.
+  const showMoney = features.includes("financeiro");
   const summaries: Record<string, ClientSummary> = {};
   for (const row of totals) {
     summaries[row.clientId] = {
       entregasNoAno: row.deliveries,
-      faturadoNoAnoCents: row.totalCents,
+      faturadoNoAnoCents: showMoney ? row.totalCents : 0,
     };
   }
 
@@ -39,7 +43,7 @@ export default async function ClientesCadastroPage() {
       />
 
       <div className="mb-6">
-        <ClientTabs />
+        <ClientTabs features={features} />
       </div>
 
       <ClientRegistry

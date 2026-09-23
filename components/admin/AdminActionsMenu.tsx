@@ -14,31 +14,42 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Accordion } from "@/components/Accordion";
+import type { FeatureKey } from "@/lib/features";
 
-const ACTIONS: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/admin/guias", label: "Guia de Captação", icon: Clapperboard },
-  { href: "/admin/orcamentos", label: "Orçamento", icon: Receipt },
-  { href: "/admin/biblioteca", label: "Biblioteca", icon: Library },
-  { href: "/admin/galerias", label: "Galeria do cliente", icon: Images },
-  { href: "/admin/backlog", label: "Entregas", icon: Kanban },
-  { href: "/admin/clientes", label: "Clientes", icon: Briefcase },
-  { href: "/admin/agenda", label: "Minha Agenda", icon: CalendarClock },
-  { href: "/admin/lettering", label: "Lettering", icon: PenLine },
-];
-
-const ADMIN_ONLY_ACTIONS: typeof ACTIONS = [
-  { href: "/admin/usuarios", label: "Usuários", icon: Users },
+const ACTIONS: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** Aparece se qualquer uma dessas áreas estiver liberada. */
+  features: FeatureKey[];
+}[] = [
+  { href: "/admin/guias", label: "Guia de Captação", icon: Clapperboard, features: ["guias"] },
+  { href: "/admin/orcamentos", label: "Orçamento", icon: Receipt, features: ["orcamentos"] },
+  { href: "/admin/biblioteca", label: "Biblioteca", icon: Library, features: ["biblioteca"] },
+  { href: "/admin/galerias", label: "Galeria do cliente", icon: Images, features: ["galerias"] },
+  { href: "/admin/backlog", label: "Entregas", icon: Kanban, features: ["backlog"] },
+  { href: "/admin/clientes", label: "Clientes", icon: Briefcase, features: ["clientes", "financeiro"] },
+  { href: "/admin/agenda", label: "Minha Agenda", icon: CalendarClock, features: ["agenda"] },
+  { href: "/admin/lettering", label: "Lettering", icon: PenLine, features: ["lettering"] },
 ];
 
 export function AdminActionsMenu({
   isAdmin = false,
+  features,
   defaultOpen = false,
 }: {
   isAdmin?: boolean;
+  /** Áreas liberadas pra quem está logado — ver lib/features.ts. */
+  features: FeatureKey[];
   /** Aberto no desktop, recolhido no mobile pra não empurrar as tarefas. */
   defaultOpen?: boolean;
 }) {
-  const actions = isAdmin ? [...ACTIONS, ...ADMIN_ONLY_ACTIONS] : ACTIONS;
+  const actions = ACTIONS.filter((action) =>
+    action.features.some((key) => features.includes(key))
+  );
+  if (isAdmin) {
+    actions.push({ href: "/admin/usuarios", label: "Usuários", icon: Users, features: [] });
+  }
 
   return (
     <Accordion

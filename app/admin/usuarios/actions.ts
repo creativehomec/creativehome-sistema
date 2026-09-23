@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createUser, deleteUser, updateUser, type UserRole } from "@/lib/users";
 import { createInvite, deleteInvite } from "@/lib/invites";
 import { requireAdmin } from "@/lib/session";
+import { FEATURES } from "@/lib/features";
 
 export async function createUserAction(formData: FormData) {
   await requireAdmin();
@@ -30,7 +31,20 @@ export async function updateUserAction(formData: FormData) {
 
   if (!id || !username) return;
 
-  await updateUser(id, { username, email, role, password: password || undefined });
+  // Checkbox desmarcado não vai no form: o que não veio marcado é o que foi
+  // desligado.
+  const enabled = new Set(formData.getAll("features").map(String));
+  const disabledFeatures = FEATURES.map((feature) => feature.key).filter(
+    (key) => !enabled.has(key)
+  );
+
+  await updateUser(id, {
+    username,
+    email,
+    role,
+    disabledFeatures,
+    password: password || undefined,
+  });
   revalidatePath("/admin/usuarios");
 }
 

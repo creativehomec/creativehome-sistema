@@ -11,7 +11,7 @@ import {
   listServices,
 } from "@/lib/billing";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getCurrentUsername } from "@/lib/session";
+import { getAllowedFeatures, getCurrentUsername } from "@/lib/session";
 import {
   formatBRL,
   lineTotalCents,
@@ -48,11 +48,12 @@ export default async function FaturamentoPage({
 }) {
   const params = await searchParams;
 
-  const [clients, services, invoices, username] = await Promise.all([
+  const [clients, services, invoices, username, features] = await Promise.all([
     listClients(),
     listServices(),
     listInvoices(),
     getCurrentUsername(),
+    getAllowedFeatures(),
   ]);
 
   const clientId = params.cliente || clients[0]?.id || null;
@@ -93,7 +94,7 @@ export default async function FaturamentoPage({
       />
 
       <div className="mb-6">
-        <ClientTabs />
+        <ClientTabs features={features} />
       </div>
 
       {clientId ? (

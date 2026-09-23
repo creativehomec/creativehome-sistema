@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME, getSession, type Session } from "@/lib/auth";
 import { getUserById } from "@/lib/users";
+import { FEATURES, type FeatureKey } from "@/lib/features";
 
 /**
  * Lê a sessão atual (userId + role) a partir do cookie, pra uso em Server
@@ -42,4 +43,30 @@ export async function requireAdmin(): Promise<Session> {
     redirect("/admin");
   }
   return session;
+}
+
+/**
+ * Áreas liberadas pra quem está logado. Admin tem todas; membro tem todas
+ * menos as que um admin desligou em /admin/usuarios. Lê o usuário do banco
+ * (com o cache curto de `getUserById`), e não do cookie, pra que tirar um
+ * acesso valha em até um minuto em vez de só no próximo login.
+ */
+export const getAllowedFeatures = cache(async (): Promise<FeatureKey[]> => {
+  const session = await getCurrentSession();
+  if (!session) return [];
+  const all = FEATURES.map((feature) => feature.key);
+  if (session.role === "admin") return all;
+  const user = await getUserById(session.userId);
+  const disabled = new Set(user?.disabled_features ?? []);
+  return all.filter((key) => !disabled.has(key));
+});
+
+/**
+ * Barra quem não tem a área liberada. Vai no layout da área (páginas) e no
+ * topo das server actions dela — action é endpoint próprio e não passa pelo
+ * layout.
+ */
+export async function requireFeature(key: FeatureKey): Promise<void> {
+  const allowed = await getAllowedFeatures();
+  if (!allowed.includes(key)) redirect("/admin");
 }

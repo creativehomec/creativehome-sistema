@@ -8,7 +8,7 @@ import {
   reopenInvoice,
   updateService,
 } from "@/lib/billing";
-import { getCurrentSession } from "@/lib/session";
+import { getCurrentSession, requireFeature } from "@/lib/session";
 
 function revalidateBilling() {
   revalidatePath("/admin/clientes/faturamento");
@@ -19,6 +19,7 @@ function revalidateBilling() {
 // -------------------------------------------------------------- catálogo
 
 export async function createServiceAction(formData: FormData) {
+  await requireFeature("financeiro");
   await createService({
     name: String(formData.get("name") ?? ""),
     price: formData.get("price"),
@@ -27,6 +28,7 @@ export async function createServiceAction(formData: FormData) {
 }
 
 export async function updateServiceAction(formData: FormData) {
+  await requireFeature("financeiro");
   await updateService(String(formData.get("id")), {
     name: String(formData.get("name") ?? ""),
     price: formData.get("price"),
@@ -36,6 +38,7 @@ export async function updateServiceAction(formData: FormData) {
 }
 
 export async function deleteServiceAction(formData: FormData) {
+  await requireFeature("financeiro");
   await deleteService(String(formData.get("id")));
   revalidateBilling();
 }
@@ -43,6 +46,7 @@ export async function deleteServiceAction(formData: FormData) {
 // ------------------------------------------------------------ fechamento
 
 export async function closeMonthAction(formData: FormData) {
+  await requireFeature("financeiro");
   const session = await getCurrentSession();
   await closeMonth({
     clientId: String(formData.get("client_id")),
@@ -54,6 +58,7 @@ export async function closeMonthAction(formData: FormData) {
 }
 
 export async function reopenInvoiceAction(formData: FormData) {
+  await requireFeature("financeiro");
   await reopenInvoice(String(formData.get("id")));
   revalidateBilling();
 }

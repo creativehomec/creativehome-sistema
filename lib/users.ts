@@ -9,6 +9,8 @@ export interface User {
   email: string;
   password_hash: string;
   role: UserRole;
+  /** Áreas desligadas por um admin — ver lib/features.ts. */
+  disabled_features: string[];
   created_at: string;
 }
 
@@ -159,13 +161,20 @@ export async function createUser(fields: {
 
 export async function updateUser(
   id: string,
-  fields: { username: string; email: string; role: UserRole; password?: string }
+  fields: {
+    username: string;
+    email: string;
+    role: UserRole;
+    disabledFeatures: string[];
+    password?: string;
+  }
 ): Promise<PublicUser> {
   const supabase = getSupabaseServerClient();
   const update: Record<string, unknown> = {
     username: fields.username.trim().toLowerCase(),
     email: fields.email.trim(),
     role: fields.role,
+    disabled_features: fields.disabledFeatures,
   };
   if (fields.password) {
     update.password_hash = await hashPassword(fields.password);

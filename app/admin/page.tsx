@@ -9,15 +9,20 @@ import {
 } from "@/components/admin/TodayAgenda";
 import { listDailyTodos } from "@/lib/dailyTodos";
 import { listUpcomingPosts } from "@/lib/upcomingPosts";
-import { getCurrentSession, getCurrentUsername } from "@/lib/session";
+import {
+  getAllowedFeatures,
+  getCurrentSession,
+  getCurrentUsername,
+} from "@/lib/session";
 import { getUserCalendarAccount } from "@/lib/userCalendars";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminHub() {
-  const [session, username, { todos, users }, upcoming] = await Promise.all([
+  const [session, username, features, { todos, users }, upcoming] = await Promise.all([
     getCurrentSession(),
     getCurrentUsername(),
+    getAllowedFeatures(),
     listDailyTodos(),
     listUpcomingPosts(),
   ]);
@@ -53,10 +58,14 @@ export default async function AdminHub() {
               daria divergência de hidratação ou o painel abrindo sozinho a cada
               carga. O CSS resolve sem JS. */}
           <div className="lg:hidden">
-            <AdminActionsMenu isAdmin={session?.role === "admin"} />
+            <AdminActionsMenu isAdmin={session?.role === "admin"} features={features} />
           </div>
           <div className="hidden lg:block">
-            <AdminActionsMenu isAdmin={session?.role === "admin"} defaultOpen />
+            <AdminActionsMenu
+              isAdmin={session?.role === "admin"}
+              features={features}
+              defaultOpen
+            />
           </div>
 
           {/* Entre os atalhos e as postagens: no desktop a coluna da

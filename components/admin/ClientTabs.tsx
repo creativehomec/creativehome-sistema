@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
+import type { FeatureKey } from "@/lib/features";
 
-const TABS = [
-  { href: "/admin/clientes/faturamento", label: "Faturamento" },
-  { href: "/admin/clientes/resumo", label: "Resumo" },
-  { href: "/admin/clientes/cadastro", label: "Cadastro" },
+const TABS: { href: string; label: string; feature: FeatureKey }[] = [
+  { href: "/admin/clientes/faturamento", label: "Faturamento", feature: "financeiro" },
+  { href: "/admin/clientes/resumo", label: "Resumo", feature: "financeiro" },
+  { href: "/admin/clientes/cadastro", label: "Cadastro", feature: "clientes" },
 ];
 
 /**
@@ -18,7 +19,7 @@ const TABS = [
  * acompanha para onde foi. Mola sem repique (`bounce: 0`) porque nada aqui
  * vem de um gesto com inércia — é um toque, não um arremesso.
  */
-export function ClientTabs() {
+export function ClientTabs({ features }: { features: FeatureKey[] }) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion();
 
@@ -30,7 +31,7 @@ export function ClientTabs() {
       // rola. No desktop cabem e ficam todas à vista.
       className="flex items-center gap-1 overflow-x-auto rounded-lg border border-neutral-200 bg-white/90 p-1 backdrop-blur-md [scrollbar-width:none] sm:flex-wrap sm:overflow-visible"
     >
-      {TABS.map((tab) => {
+      {TABS.filter((tab) => features.includes(tab.feature)).map((tab) => {
         const current = pathname === tab.href;
         return (
           <Link

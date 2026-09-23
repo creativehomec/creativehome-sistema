@@ -233,6 +233,8 @@ create table if not exists users (
   email text not null default '',
   password_hash text not null,
   role text not null default 'member' check (role in ('admin', 'member')),
+  -- Áreas desligadas pra esse usuário (ver 0049_add_users_disabled_features.sql).
+  disabled_features text[] not null default '{}',
   created_at timestamptz not null default now()
 );
 
