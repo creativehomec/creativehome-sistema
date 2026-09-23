@@ -1,26 +1,23 @@
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getBacklogBoard } from "@/lib/backlog";
-import { getCurrentUsername } from "@/lib/session";
 import { KanbanBoard } from "@/components/admin/KanbanBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function BacklogPage() {
-  const [board, username] = await Promise.all([
+  const [board] = await Promise.all([
     getBacklogBoard(),
-    getCurrentUsername(),
   ]);
 
   return (
-    <div className="mx-auto flex w-full flex-1 max-w-[100rem] flex-col py-10">
+    <div className="mx-auto flex w-full flex-1 max-w-[100rem] flex-col pb-10">
       <AdminHeader
         title="Entregas"
         trail={[
           { label: "Admin", href: "/admin" },
           { label: "Entregas" },
         ]}
-        username={username}
       />
 
       {/* flex-1 pra as colunas ocuparem a altura da tela e o slider encostar

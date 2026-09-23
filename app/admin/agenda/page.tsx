@@ -17,7 +17,7 @@ import {
   stepOf,
   type AgendaView,
 } from "@/lib/agendaRange";
-import { getCurrentSession, getCurrentUsername } from "@/lib/session";
+import { getCurrentSession } from "@/lib/session";
 import { getUserCalendarAccount } from "@/lib/userCalendars";
 import { countBacklogCardsWithDate } from "@/lib/backlog";
 import {
@@ -65,8 +65,7 @@ export default async function MinhaAgendaPage({
   // entregas somavam meio segundo antes de a tela começar a existir.
   const [session, params] = await Promise.all([getCurrentSession(), searchParams]);
 
-  const [username, account, cardCount] = await Promise.all([
-    getCurrentUsername(),
+  const [account, cardCount] = await Promise.all([
     session ? getUserCalendarAccount(session.userId) : null,
     countBacklogCardsWithDate(),
   ]);
@@ -133,11 +132,10 @@ export default async function MinhaAgendaPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-[100rem] py-10">
+    <div className="mx-auto w-full max-w-[100rem] pb-10">
       <AdminHeader
         title="Minha Agenda"
         trail={[{ label: "Admin", href: "/admin" }, { label: "Minha Agenda" }]}
-        username={username}
       />
 
       {params.agenda_error ? (

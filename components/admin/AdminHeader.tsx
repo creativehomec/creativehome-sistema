@@ -2,13 +2,7 @@ import { ChevronRight, Home } from "lucide-react";
 import Link from "next/link";
 import { logout } from "@/app/admin/login/actions";
 import { LiveRefresh } from "@/components/admin/LiveRefresh";
-import { NotificationBell } from "@/components/admin/NotificationBell";
 import { BrandLogo } from "@/components/BrandLogo";
-import {
-  countUnreadNotifications,
-  listNotifications,
-} from "@/lib/notifications";
-import { getCurrentSession } from "@/lib/session";
 
 export type BreadcrumbItem = {
   label: string;
@@ -19,37 +13,47 @@ export type BreadcrumbItem = {
 const FOCUS_RING =
   "focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none";
 
-export async function AdminHeader({
+export function AdminHeader({
   title,
   trail,
-  username,
   dense = false,
+  standalone = false,
 }: {
   title: string;
   trail?: BreadcrumbItem[];
-  username?: string | null;
   /**
    * Versão baixa do cabeçalho, pra tela que é ferramenta e não documento: o
    * título sai (a trilha já nomeia a página) e a folga encolhe, porque cada
    * faixa aqui em cima é faixa a menos pra área de trabalho no celular.
    */
   dense?: boolean;
+  /**
+   * Fora do layout do admin não existe barra lateral nem faixa de topo, então
+   * o cabeçalho volta a carregar logo e Sair por conta própria. Dentro do
+   * admin isso vive no layout, e repetir aqui seria a mesma coisa duas vezes.
+   */
+  standalone?: boolean;
 }) {
-  // A campainha é buscada aqui, e não em cada página, pra aparecer igual em
-  // todo o admin sem repetir a consulta em dez lugares.
-  const session = await getCurrentSession();
-  const [notifications, unreadCount] = session
-    ? await Promise.all([
-        listNotifications(session.userId),
-        countUnreadNotifications(session.userId),
-      ])
-    : [[], 0];
+  return (
+    <header
+      // `pt-painel` é o par vertical do `px-painel` que o cartão já usa: a
+      // primeira linha fica à mesma distância da borda de cima e da lateral,
+      // e continua assim nas três larguras, porque os dois leem os mesmos
+      // degraus. É por isso que não é um número escrito aqui.
+      className={
+        dense
+          ? "pt-painel mb-3"
+          : trail?.length
+            ? "pt-painel mb-6"
+            : "pt-painel mb-4"
+      }
+    >
+      {/* Todo o admin fica montado sob este header, então é daqui que sai a
+          sincronização com o que os outros usuários estão fazendo. */}
+      <LiveRefresh />
 
-  if (dense) {
-    return (
-      <header className="mb-3">
-        <LiveRefresh />
-        <div className="flex items-center justify-center gap-4">
+      {standalone ? (
+        <div className="mb-3 flex items-center justify-center gap-4">
           <Link
             href="/admin"
             aria-label="Ir para o Painel"
@@ -69,97 +73,53 @@ export async function AdminHeader({
             </button>
           </form>
         </div>
-        {/* O nome da tela continua para quem usa leitor de tela. */}
-        <h1 className="sr-only">{title}</h1>
-      </header>
-    );
-  }
+      ) : null}
 
-  return (
-    <header className="mb-8">
-      {/* Todo o admin fica montado sob este header, então é daqui que sai a
-          sincronização com o que os outros usuários estão fazendo. */}
-      <LiveRefresh />
-      {/* O logo é a volta pro Painel de qualquer página — é onde todo mundo
-          clica esperando ir pra home. */}
-      <Link
-        href="/admin"
-        aria-label="Ir para o Painel"
-        className={`mx-auto mb-4 block w-fit rounded-lg px-4 py-2 ${FOCUS_RING}`}
+      {/* A trilha nomeia onde a pessoa está — é a primeira linha da página
+          agora que logo e conta saíram daqui pra moldura. */}
+      {trail?.length ? (
+        <nav aria-label="Breadcrumb" className={standalone ? "mt-4" : ""}>
+          <ol className="flex flex-wrap items-center gap-1 text-[13px]">
+            {trail.map((item, index) => (
+              <li key={item.label} className="flex items-center gap-1">
+                {index > 0 ? (
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="size-3.5 text-neutral-500"
+                  />
+                ) : null}
+                {item.href ? (
+                  <Link
+                    href={item.href}
+                    className={`flex items-center rounded-md bg-neutral-100 px-2.5 py-1 text-neutral-600 transition-transform hover:bg-neutral-200 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span
+                    aria-current="page"
+                    className="flex items-center rounded-md bg-neutral-100 px-2.5 py-1 font-medium text-neutral-900 pointer-coarse:min-h-11"
+                  >
+                    {item.label}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      ) : null}
+
+      {/* Com trilha, o último item já nomeia a tela — o título visível seria
+          a mesma palavra duas vezes. Some da tela, fica pro leitor. */}
+      <h1
+        className={
+          dense || trail?.length
+            ? "sr-only"
+            : "text-xl leading-tight font-semibold tracking-tight text-neutral-900"
+        }
       >
-        <BrandLogo className="block h-[30px] w-auto text-white" />
-      </Link>
-
-      {/* Trilha, ações e título ficam sobre o gradiente marrom do body, então
-          herdam a mesma superfície branca translúcida do logo acima — as
-          cores neutral-* do resto do app assumem fundo branco (ver
-          globals.css) e ficavam ilegíveis direto no gradiente. */}
-      <div className="rounded-lg bg-white/90 px-4 py-3 backdrop-blur-sm">
-        {/* Trilha (ou título, sem trilha) e ações na mesma linha, mesmo eixo
-            Y — com trilha, ela já diz onde a pessoa está, então o h1
-            repetindo o mesmo nome embaixo só ocupava espaço. */}
-        <div className="flex items-center justify-between gap-4">
-          {trail?.length ? (
-            <nav aria-label="Breadcrumb" className="min-w-0">
-              <ol className="flex flex-wrap items-center gap-1 text-[13px]">
-                {trail.map((item, index) => (
-                  <li key={item.label} className="flex items-center gap-1">
-                    {index > 0 ? (
-                      <ChevronRight
-                        aria-hidden="true"
-                        className="size-3.5 text-neutral-500"
-                      />
-                    ) : null}
-                    {item.href ? (
-                      <Link
-                        href={item.href}
-                        className={`flex items-center rounded-md bg-neutral-100 px-2.5 text-neutral-600 transition-transform hover:bg-neutral-200 active:scale-[0.97] pointer-coarse:min-h-11 py-1 ${FOCUS_RING}`}
-                      >
-                        {item.label}
-                      </Link>
-                    ) : (
-                      <span
-                        aria-current="page"
-                        className="flex items-center rounded-md bg-neutral-100 px-2.5 py-1 font-medium text-neutral-900 pointer-coarse:min-h-11"
-                      >
-                        {item.label}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          ) : (
-            <h1 className="min-w-0 truncate text-xl leading-tight font-semibold tracking-tight text-neutral-900">
-              {title}
-            </h1>
-          )}
-
-          <div className="flex shrink-0 items-center gap-3">
-            {username ? (
-              <span className="text-sm text-neutral-500">{username}</span>
-            ) : null}
-            {session ? (
-              <NotificationBell
-                notifications={notifications}
-                unreadCount={unreadCount}
-              />
-            ) : null}
-            {/* Borda pra separar do nome ao lado: sem ela os dois eram o mesmo
-                cinza e nada dizia qual era clicável. Sem confirmação de
-                propósito — deslogar é reversível, e diálogo em ação reversível
-                treina a pessoa a clicar sem ler. */}
-            <form action={logout}>
-              <button
-                type="submit"
-                className={`flex items-center rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 transition-transform hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
-              >
-                Sair
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
+        {title}
+      </h1>
     </header>
   );
 }

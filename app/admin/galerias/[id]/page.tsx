@@ -9,7 +9,6 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Accordion } from "@/components/Accordion";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { DriveSyncForm } from "@/components/admin/DriveSyncForm";
-import { getCurrentUsername } from "@/lib/session";
 import {
   addGalleryImageAction,
   deleteGalleryImageAction,
@@ -90,9 +89,8 @@ function FolderList({
 
 export default async function GalleryClientPage({ params }: { params: Params }) {
   const { id } = await params;
-  const [client, username, googleAccount] = await Promise.all([
+  const [client, googleAccount] = await Promise.all([
     getGalleryClientWithImages(id),
-    getCurrentUsername(),
     getConnectedGoogleAccount(),
   ]);
 
@@ -103,7 +101,7 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
   const root = buildGalleryFolderTree(client.images);
 
   return (
-    <div className="mx-auto w-full max-w-6xl py-10">
+    <div className="mx-auto w-full max-w-6xl pb-10">
       <AdminHeader
         title={client.name}
         trail={[
@@ -111,7 +109,6 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
           { label: "Galerias", href: "/admin/galerias" },
           { label: client.name },
         ]}
-        username={username}
       />
 
       <div className="mb-6 space-y-4">

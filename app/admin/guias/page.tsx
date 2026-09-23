@@ -2,7 +2,6 @@ import Link from "next/link";
 import { listGuides, type Guide } from "@/lib/guides";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { DeleteButton } from "@/components/admin/DeleteButton";
-import { getCurrentUsername } from "@/lib/session";
 import { createGuideAction, deleteGuideAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -67,9 +66,8 @@ export default async function AdminDashboard({
     tag: String(params.tag ?? ""),
   };
 
-  const [guides, username] = await Promise.all([
+  const [guides] = await Promise.all([
     listGuides(),
-    getCurrentUsername(),
   ]);
 
   const clientOptions = uniqueSorted(guides.map((g) => g.client_name));
@@ -82,11 +80,10 @@ export default async function AdminDashboard({
   const filteredGuides = guides.filter((guide) => matchesFilters(guide, filters));
 
   return (
-    <div className="mx-auto w-full max-w-6xl py-10">
+    <div className="mx-auto w-full max-w-6xl pb-10">
       <AdminHeader
         title="Guias de gravação"
         trail={[{ label: "Admin", href: "/admin" }, { label: "Guias" }]}
-        username={username}
       />
 
       <div className="rounded-lg border border-neutral-200 bg-white">

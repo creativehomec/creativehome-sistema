@@ -2,7 +2,6 @@ import Link from "next/link";
 import { listBudgets } from "@/lib/budgets";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { DeleteButton } from "@/components/admin/DeleteButton";
-import { getCurrentUsername } from "@/lib/session";
 import { createBudgetAction, deleteBudgetAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -12,17 +11,15 @@ function formatDate(value: string) {
 }
 
 export default async function BudgetsDashboard() {
-  const [budgets, username] = await Promise.all([
+  const [budgets] = await Promise.all([
     listBudgets(),
-    getCurrentUsername(),
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl py-10">
+    <div className="mx-auto w-full max-w-6xl pb-10">
       <AdminHeader
         title="Orçamentos"
         trail={[{ label: "Admin", href: "/admin" }, { label: "Orçamentos" }]}
-        username={username}
       />
 
       <div className="rounded-lg border border-neutral-200 bg-white">
