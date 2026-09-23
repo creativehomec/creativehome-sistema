@@ -1,5 +1,4 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { getAllowedFeatures } from "@/lib/session";
 import { ClientTabs } from "@/components/admin/ClientTabs";
 import { YearBarChart } from "@/components/admin/YearBarChart";
 import {
@@ -7,6 +6,7 @@ import {
   getYearTotals,
   listInvoiceYears,
 } from "@/lib/billing";
+import { getAllowedFeatures, getCurrentUsername } from "@/lib/session";
 import { formatBRL } from "@/lib/billingTypes";
 
 export const dynamic = "force-dynamic";
@@ -17,9 +17,10 @@ export default async function ResumoPage({
   searchParams: Promise<{ ano?: string; cliente?: string }>;
 }) {
   const params = await searchParams;
-  const [years, overdue, features] = await Promise.all([
+  const [years, overdue, username, features] = await Promise.all([
     listInvoiceYears(),
     getOverdueByClient(),
+    getCurrentUsername(),
     getAllowedFeatures(),
   ]);
 
@@ -56,7 +57,7 @@ export default async function ResumoPage({
   const topCents = ranking[0]?.totalCents ?? 1;
 
   return (
-    <div className="mx-auto w-full max-w-5xl pb-10">
+    <div className="mx-auto w-full max-w-5xl py-10">
       <AdminHeader
         title="Clientes"
         trail={[
@@ -64,6 +65,7 @@ export default async function ResumoPage({
           { label: "Clientes", href: "/admin/clientes" },
           { label: "Resumo do ano" },
         ]}
+        username={username}
       />
 
       <div className="mb-6">

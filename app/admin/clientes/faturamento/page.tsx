@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Accordion } from "@/components/Accordion";
-import { getAllowedFeatures } from "@/lib/session";
 import { ClientTabs } from "@/components/admin/ClientTabs";
 import { ServiceCatalog } from "@/components/admin/ServiceCatalog";
 import {
@@ -12,6 +11,7 @@ import {
   listServices,
 } from "@/lib/billing";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getAllowedFeatures, getCurrentUsername } from "@/lib/session";
 import {
   formatBRL,
   lineTotalCents,
@@ -48,10 +48,11 @@ export default async function FaturamentoPage({
 }) {
   const params = await searchParams;
 
-  const [clients, services, invoices, features] = await Promise.all([
+  const [clients, services, invoices, username, features] = await Promise.all([
     listClients(),
     listServices(),
     listInvoices(),
+    getCurrentUsername(),
     getAllowedFeatures(),
   ]);
 
@@ -81,7 +82,7 @@ export default async function FaturamentoPage({
   const clientName = clients.find((client) => client.id === clientId)?.name ?? "";
 
   return (
-    <div className="mx-auto w-full max-w-5xl pb-10">
+    <div className="mx-auto w-full max-w-5xl py-10">
       <AdminHeader
         title="Clientes"
         trail={[
@@ -89,6 +90,7 @@ export default async function FaturamentoPage({
           { label: "Clientes", href: "/admin/clientes" },
           { label: "Faturamento" },
         ]}
+        username={username}
       />
 
       <div className="mb-6">

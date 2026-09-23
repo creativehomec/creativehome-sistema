@@ -1,17 +1,18 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { getAllowedFeatures } from "@/lib/session";
 import { ClientTabs } from "@/components/admin/ClientTabs";
 import { ClientRegistry, type ClientSummary } from "@/components/admin/ClientRegistry";
 import { getYearTotals } from "@/lib/billing";
 import { listGalleryClients } from "@/lib/galleries";
+import { getAllowedFeatures, getCurrentUsername } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientesCadastroPage() {
   const year = new Date().getFullYear();
-  const [todos, totals, features] = await Promise.all([
+  const [todos, totals, username, features] = await Promise.all([
     listGalleryClients({ includeArchived: true }),
     getYearTotals(year),
+    getCurrentUsername(),
     getAllowedFeatures(),
   ]);
 
@@ -30,7 +31,7 @@ export default async function ClientesCadastroPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl pb-10">
+    <div className="mx-auto w-full max-w-5xl py-10">
       <AdminHeader
         title="Clientes"
         trail={[
@@ -38,6 +39,7 @@ export default async function ClientesCadastroPage() {
           { label: "Clientes", href: "/admin/clientes" },
           { label: "Cadastro" },
         ]}
+        username={username}
       />
 
       <div className="mb-6">

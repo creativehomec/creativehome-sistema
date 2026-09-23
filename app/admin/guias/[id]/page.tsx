@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getGuideWithSections } from "@/lib/guides";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { getCurrentUsername } from "@/lib/session";
 import { GeneralInfoForm } from "@/components/admin/GeneralInfoForm";
 import { PublishBox } from "@/components/admin/PublishBox";
 import { VideosSection } from "@/components/admin/VideosSection";
@@ -29,14 +30,15 @@ export default async function GuideEditPage({
   params: Params;
 }) {
   const { id } = await params;
-  const [guide] = await Promise.all([
+  const [guide, username] = await Promise.all([
     getGuideWithSections(id),
+    getCurrentUsername(),
   ]);
 
   if (!guide) notFound();
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-10">
+    <div className="mx-auto w-full max-w-6xl py-10">
       <AdminHeader
         title={guide.title}
         trail={[
@@ -44,6 +46,7 @@ export default async function GuideEditPage({
           { label: "Guias", href: "/admin/guias" },
           { label: guide.title },
         ]}
+        username={username}
       />
 
       <div className="space-y-8">

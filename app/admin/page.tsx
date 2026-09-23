@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { AdminActionsMenu } from "@/components/admin/AdminActionsMenu";
 import { DailyTodoList } from "@/components/admin/DailyTodoList";
 import { UpcomingPosts } from "@/components/admin/UpcomingPosts";
 import {
@@ -9,6 +10,7 @@ import {
 import { listDailyTodos } from "@/lib/dailyTodos";
 import { listUpcomingPosts } from "@/lib/upcomingPosts";
 import {
+  getAllowedFeatures,
   getCurrentSession,
   getCurrentUsername,
 } from "@/lib/session";
@@ -17,9 +19,10 @@ import { getUserCalendarAccount } from "@/lib/userCalendars";
 export const dynamic = "force-dynamic";
 
 export default async function AdminHub() {
-  const [session, username, { todos, users }, upcoming] = await Promise.all([
+  const [session, username, features, { todos, users }, upcoming] = await Promise.all([
     getCurrentSession(),
     getCurrentUsername(),
+    getAllowedFeatures(),
     listDailyTodos(),
     listUpcomingPosts(),
   ]);
@@ -33,19 +36,43 @@ export default async function AdminHub() {
     session && username ? { id: session.userId, username } : null;
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-10">
-      <AdminHeader title="Painel" />
+    <div className="mx-auto w-full max-w-6xl py-10">
+      <AdminHeader title="Painel" username={username} />
 
-      {/* Os atalhos saíram daqui pra barra do layout, onde valem pras 19
-          telas. Sobra a coluna do "o que tenho pela frente": agenda de hoje
-          em cima, próximas postagens embaixo.
-          items-start: sem isso o grid estica os dois lados pra mesma altura e
-          a coluna curta vira uma caixa vazia comprida. */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(240px,1fr)_2fr]">
-        {/* No mobile o wrapper vira `contents` e some, pra ordem da pilha
+      {/* Ordem do DOM já serve aos dois: empilhado no mobile/tablet dá Atalhos
+          em cima, e em duas colunas no desktop dá Atalhos à esquerda.
+          items-start: sem isso o grid estica os dois cards pra mesma altura e
+          o menu recolhido vira uma caixa vazia comprida. */}
+      {/* Assimétrico e não meio a meio: o maior rótulo do menu tem 135px, então
+          532px de coluna deixavam ~365px mortos por linha. As tarefas usam a
+          largura que sobra. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(200px,1fr)_2fr]">
+        {/* Atalhos e próximas postagens dividem a mesma célula do grid. Soltos,
+            caíam em linhas diferentes, e como a linha de cima tem a altura das
+            tarefas o vão entre os dois virava 231px em vez dos 24px de padrão.
+            No mobile o wrapper vira `contents` e some, pra ordem da pilha
             continuar sendo decidida pelo grid de fora. */}
         <div className="max-lg:contents lg:space-y-6">
-          {/* Fora do Promise.all da página de propósito: são até cinco idas
+          {/* Duas instâncias em vez de um defaultOpen dependente da viewport: o
+              servidor não sabe a largura da tela, então decidir isso em estado
+              daria divergência de hidratação ou o painel abrindo sozinho a cada
+              carga. O CSS resolve sem JS. */}
+          <div className="lg:hidden">
+            <AdminActionsMenu isAdmin={session?.role === "admin"} features={features} />
+          </div>
+          <div className="hidden lg:block">
+            <AdminActionsMenu
+              isAdmin={session?.role === "admin"}
+              features={features}
+              defaultOpen
+            />
+          </div>
+
+          {/* Entre os atalhos e as postagens: no desktop a coluna da
+              esquerda vira a coluna do "o que tenho pela frente", e no
+              celular a mesma ordem do DOM dá Atalhos, agenda, Tarefas.
+
+              Fora do Promise.all da página de propósito: são até cinco idas
               ao Google, e o Painel não pode esperar por elas pra existir.
               Chega por streaming, com o esqueleto no mesmo lugar. */}
           {account ? (
@@ -54,17 +81,21 @@ export default async function AdminHub() {
             </Suspense>
           ) : null}
 
-          {/* No celular cai por último, depois das tarefas — no desktop
-              fecha a coluna estreita, embaixo da agenda. */}
-          <div className="max-lg:order-3">
+          {/* No mobile fecha a pilha, depois das tarefas. */}
+          <div className="max-lg:order-last">
             <UpcomingPosts posts={upcoming} />
           </div>
         </div>
 
-        {/* Filho direto do grid de propósito: é ele que ocupa a coluna
-            larga (2fr) no desktop. No celular sobe pro meio da pilha. */}
-        <section aria-labelledby="tarefas-titulo" className="max-lg:order-2">
-          <DailyTodoList todos={todos} users={users} currentUser={currentUser} />
+        <section
+          aria-labelledby="tarefas-titulo"
+          className="rounded-lg border border-neutral-200 bg-white p-4"
+        >
+          <DailyTodoList
+            todos={todos}
+            users={users}
+            currentUser={currentUser}
+          />
         </section>
       </div>
     </div>

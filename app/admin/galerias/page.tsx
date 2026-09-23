@@ -3,6 +3,7 @@ import { listGalleryClients } from "@/lib/galleries";
 import { getConnectedGoogleAccount } from "@/lib/googleDrive";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { DeleteButton } from "@/components/admin/DeleteButton";
+import { getCurrentUsername } from "@/lib/session";
 import {
   createGalleryClientAction,
   deleteGalleryClientAction,
@@ -24,16 +25,18 @@ export default async function GalleryClientsPage({
   const driveError = params.drive_error ? String(params.drive_error) : null;
   const driveConnected = params.drive_connected === "1";
 
-  const [clients, googleAccount] = await Promise.all([
+  const [clients, username, googleAccount] = await Promise.all([
     listGalleryClients(),
+    getCurrentUsername(),
     getConnectedGoogleAccount(),
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-10">
+    <div className="mx-auto w-full max-w-6xl py-10">
       <AdminHeader
         title="Galeria do cliente"
         trail={[{ label: "Admin", href: "/admin" }, { label: "Galerias" }]}
+        username={username}
       />
 
       {driveError ? (
