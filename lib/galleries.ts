@@ -1,4 +1,5 @@
 import "server-only";
+import { isClientColorKey } from "@/lib/backlogTypes";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isRenderableMediaMimeType } from "@/lib/googleDrive";
 import { isLikelyImageUrl } from "@/lib/references";
@@ -21,6 +22,8 @@ export interface GalleryClient {
   notes: string | null;
   /** Dia do mês em que costuma pagar; vale para o mês seguinte ao da entrega. */
   payment_day: number | null;
+  /** Cor do rótulo nos cards — chave de CLIENT_COLORS; null = automática. */
+  color: string | null;
   /** Cliente fora de atividade: sai das listas, mantém o histórico. */
   archived_at: string | null;
   drive_folder_id: string | null;
@@ -406,6 +409,7 @@ export interface GalleryClientDetails {
   address: string | null;
   notes: string | null;
   payment_day: number | null;
+  color: string | null;
 }
 
 /** Campo em branco vira null: string vazia esconde a falta do dado. */
@@ -418,6 +422,7 @@ export function readGalleryClientDetails(
   formData: FormData
 ): GalleryClientDetails {
   const day = Number(String(formData.get("payment_day") ?? "").trim());
+  const color = String(formData.get("color") ?? "");
 
   return {
     name: String(formData.get("name") ?? "").trim() || "Novo cliente",
@@ -430,6 +435,7 @@ export function readGalleryClientDetails(
     notes: textOrNull(formData.get("notes")),
     payment_day:
       Number.isInteger(day) && day >= 1 && day <= 31 ? day : null,
+    color: isClientColorKey(color) ? color : null,
   };
 }
 
