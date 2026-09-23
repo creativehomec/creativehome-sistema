@@ -187,6 +187,51 @@ export interface BacklogClientOption {
   name: string;
   /** Dia de vencimento, para marcar o que já passou da data no quadro. */
   payment_day: number | null;
+  /** Chave de CLIENT_COLORS escolhida à mão; null = cor automática. */
+  color: string | null;
+}
+
+/**
+ * Cores do rótulo de cliente no card. Fundo claro e texto escuro do mesmo
+ * tom, pra o nome continuar legível (todas passam de 7:1). A chave é o que o
+ * banco guarda, então renomear uma quebra a escolha de quem já a usa.
+ */
+export const CLIENT_COLORS = {
+  sky: { label: "Azul", bg: "#e0f2fe", fg: "#075985" },
+  indigo: { label: "Índigo", bg: "#e0e7ff", fg: "#3730a3" },
+  violet: { label: "Roxo", bg: "#ede9fe", fg: "#5b21b6" },
+  fuchsia: { label: "Magenta", bg: "#fae8ff", fg: "#86198f" },
+  rose: { label: "Rosa", bg: "#ffe4e6", fg: "#9f1239" },
+  orange: { label: "Laranja", bg: "#ffedd5", fg: "#9a3412" },
+  amber: { label: "Amarelo", bg: "#fef3c7", fg: "#92400e" },
+  lime: { label: "Lima", bg: "#ecfccb", fg: "#3f6212" },
+  emerald: { label: "Verde", bg: "#d1fae5", fg: "#065f46" },
+  teal: { label: "Turquesa", bg: "#ccfbf1", fg: "#115e59" },
+  slate: { label: "Cinza", bg: "#e2e8f0", fg: "#1e293b" },
+} as const;
+
+export type ClientColorKey = keyof typeof CLIENT_COLORS;
+
+const CLIENT_COLOR_KEYS = Object.keys(CLIENT_COLORS) as ClientColorKey[];
+
+export function isClientColorKey(value: string): value is ClientColorKey {
+  return value in CLIENT_COLORS;
+}
+
+/**
+ * Cor do cliente: a escolhida, ou uma automática tirada do id. Automática
+ * porque ninguém vai abrir as configurações pra pintar trinta clientes — e
+ * derivada do id, não da posição na lista, pra não trocar de cor quando entra
+ * cliente novo.
+ */
+export function clientColorKey(client: {
+  id: string;
+  color: string | null;
+}): ClientColorKey {
+  if (client.color && isClientColorKey(client.color)) return client.color;
+  let hash = 0;
+  for (const char of client.id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return CLIENT_COLOR_KEYS[hash % CLIENT_COLOR_KEYS.length];
 }
 
 /**

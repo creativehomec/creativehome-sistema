@@ -44,6 +44,8 @@ import {
 } from "@/components/admin/BacklogToaster";
 import {
   BACKLOG_COLUMN_COLORS,
+  CLIENT_COLORS,
+  clientColorKey,
   BACKLOG_FORMAT_LABELS,
   EMPTY_BACKLOG_FILTER,
   checklistProgress,
@@ -58,6 +60,7 @@ import {
   type BacklogCard,
   type BacklogChecklistItem,
   type BacklogClientOption,
+  type ClientColorKey,
   type BacklogColumn,
   type BacklogFilter,
 } from "@/lib/backlogTypes";
@@ -76,6 +79,7 @@ import {
   moveBacklogCardAction,
   reorderBacklogColumnsAction,
   setBacklogCardApprovedAction,
+  setClientColorAction,
   updateBacklogCardAction,
   updateBacklogColumnAction,
 } from "@/app/admin/kanbanActions";
@@ -197,6 +201,7 @@ const inputClass =
 function CardBody({
   card,
   clientName,
+  clientColor = null,
   assigneeNames,
   checklist,
   showApproval = false,
@@ -205,6 +210,8 @@ function CardBody({
 }: {
   card: BacklogCard;
   clientName: string | null;
+  /** Cor do rótulo do cliente — ver CLIENT_COLORS. */
+  clientColor?: ClientColorKey | null;
   assigneeNames: string[];
   checklist: { done: number; total: number } | null;
   /** Só na coluna de aprovação a entrega pode ser marcada como aprovada. */
@@ -281,7 +288,13 @@ function CardBody({
             }`}
           >
             {clientName ? (
-              <span className="mr-1.5 rounded bg-sky-50 px-1.5 py-0.5 align-[0.05em] text-[11px] font-medium text-sky-700">
+              <span
+                className="mr-1.5 rounded px-1.5 py-0.5 align-[0.05em] text-[11px] font-medium"
+                style={{
+                  backgroundColor: CLIENT_COLORS[clientColor ?? "sky"].bg,
+                  color: CLIENT_COLORS[clientColor ?? "sky"].fg,
+                }}
+              >
                 {clientName}
               </span>
             ) : null}
@@ -352,6 +365,7 @@ function CardBody({
 function SortableCard({
   card,
   clientName,
+  clientColor,
   assigneeNames,
   checklist,
   showApproval,
@@ -361,6 +375,7 @@ function SortableCard({
 }: {
   card: BacklogCard;
   clientName: string | null;
+  clientColor: ClientColorKey | null;
   assigneeNames: string[];
   checklist: { done: number; total: number } | null;
   showApproval: boolean;
@@ -386,6 +401,7 @@ function SortableCard({
       <CardBody
         card={card}
         clientName={clientName}
+        clientColor={clientColor}
         assigneeNames={assigneeNames}
         checklist={checklist}
         showApproval={showApproval}
@@ -399,9 +415,11 @@ function SortableCard({
 /** Ações do quadro que não são do dia a dia — hoje, criar coluna. */
 function BoardSettingsMenu({
   columns,
+  clients,
   onReorder,
 }: {
   columns: BacklogColumn[];
+  clients: BacklogClientOption[];
   onReorder: (orderedIds: string[]) => void;
 }) {
   /**
@@ -496,8 +514,73 @@ function BoardSettingsMenu({
             </li>
           ))}
         </ul>
+
+        {clients.length > 0 ? (
+          <>
+            <p className="mt-4 text-sm font-semibold text-neutral-900">
+              Cor de cada cliente
+            </p>
+            <p className="mb-1 text-xs text-neutral-500">
+              É a cor do nome do cliente nos cards.
+            </p>
+            <ul className="flex flex-col gap-2">
+              {clients.map((client) => (
+                <ClientColorRow key={client.id} client={client} />
+              ))}
+            </ul>
+          </>
+        ) : null}
       </PopoverContent>
     </Popover>
+  );
+}
+
+function ClientColorRow({ client }: { client: BacklogClientOption }) {
+  // A escolha aparece na hora; o quadro inteiro se repinta quando o servidor
+  // confirma e a página revalida.
+  const [chosen, setChosen] = useState<ClientColorKey>(clientColorKey(client));
+  const [, startTransition] = useTransition();
+
+  function choose(key: ClientColorKey) {
+    setChosen(key);
+    startTransition(() => setClientColorAction(client.id, key));
+  }
+
+  return (
+    <li>
+      <span
+        className="inline-block rounded px-1.5 py-0.5 text-[11px] font-medium"
+        style={{
+          backgroundColor: CLIENT_COLORS[chosen].bg,
+          color: CLIENT_COLORS[chosen].fg,
+        }}
+      >
+        {client.name}
+      </span>
+      <div
+        role="radiogroup"
+        aria-label={`Cor de ${client.name}`}
+        className="mt-1 flex flex-wrap gap-1"
+      >
+        {(Object.keys(CLIENT_COLORS) as ClientColorKey[]).map((key) => (
+          <button
+            key={key}
+            type="button"
+            role="radio"
+            aria-checked={chosen === key}
+            aria-label={CLIENT_COLORS[key].label}
+            title={CLIENT_COLORS[key].label}
+            onClick={() => choose(key)}
+            className={`size-5 rounded-full border focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-1 focus-visible:outline-none pointer-coarse:size-8 ${
+              chosen === key
+                ? "border-neutral-900 ring-1 ring-neutral-900"
+                : "border-black/10"
+            }`}
+            style={{ backgroundColor: CLIENT_COLORS[key].fg }}
+          />
+        ))}
+      </div>
+    </li>
   );
 }
 
@@ -682,6 +765,7 @@ function SortableColumn({
   cards,
   clients,
   clientNameById,
+  clientColorById,
   assigneeNameById,
   checklistItems,
   draggable,
@@ -693,6 +777,7 @@ function SortableColumn({
   /** A lista inteira, e não só os nomes: o agrupamento usa o vencimento. */
   clients: BacklogClientOption[];
   clientNameById: Map<string, string>;
+  clientColorById: Map<string, ClientColorKey>;
   assigneeNameById: Map<string, string>;
   checklistItems: BacklogChecklistItem[];
   draggable: boolean;
@@ -767,6 +852,11 @@ function SortableColumn({
                     clientName={
                       card.client_id
                         ? clientNameById.get(card.client_id) ?? null
+                        : null
+                    }
+                    clientColor={
+                      card.client_id
+                        ? clientColorById.get(card.client_id) ?? null
                         : null
                     }
                     assigneeNames={namesOf(card.assignee_ids, assigneeNameById)}
@@ -883,6 +973,12 @@ export function KanbanBoard({
 
   const clientNameById = useMemo(
     () => new Map(board.clients.map((client) => [client.id, client.name])),
+    [board.clients]
+  );
+
+  const clientColorById = useMemo(
+    () =>
+      new Map(board.clients.map((client) => [client.id, clientColorKey(client)])),
     [board.clients]
   );
 
@@ -1083,6 +1179,7 @@ export function KanbanBoard({
           />
           <BoardSettingsMenu
             columns={columns}
+            clients={board.clients}
             onReorder={handleReorderColumns}
           />
         </div>
@@ -1131,6 +1228,7 @@ export function KanbanBoard({
                 cards={columnCards(column.id, visibleCards)}
                 clients={board.clients}
                 clientNameById={clientNameById}
+                clientColorById={clientColorById}
                 assigneeNameById={assigneeNameById}
                 checklistItems={board.checklist}
                 draggable={!filtering}
@@ -1148,6 +1246,11 @@ export function KanbanBoard({
               clientName={
                 activeCard.client_id
                   ? clientNameById.get(activeCard.client_id) ?? null
+                  : null
+              }
+              clientColor={
+                activeCard.client_id
+                  ? clientColorById.get(activeCard.client_id) ?? null
                   : null
               }
               assigneeNames={namesOf(

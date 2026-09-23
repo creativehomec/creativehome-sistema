@@ -97,7 +97,7 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
       await Promise.all([
         supabase
       .from("gallery_clients")
-      .select("id, name, payment_day")
+      .select("id, name, payment_day, color")
       .order("name"),
         supabase.from("guides").select("id, title").order("title"),
         supabase.from("users").select("id, username").order("username"),
@@ -176,7 +176,7 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
       : Promise.resolve({ data: [], error: null }),
     supabase
       .from("gallery_clients")
-      .select("id, name, payment_day")
+      .select("id, name, payment_day, color")
       .order("name"),
     supabase.from("guides").select("id, title").order("title"),
     supabase.from("users").select("id, username").order("username"),
@@ -267,6 +267,15 @@ export async function reorderBacklogColumns(orderedIds: string[]) {
       supabase.from("backlog_columns").update({ position: index }).eq("id", id)
     )
   );
+}
+
+export async function setClientColor(clientId: string, color: string | null) {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("gallery_clients")
+    .update({ color })
+    .eq("id", clientId);
+  if (error) throw error;
 }
 
 export async function deleteBacklogColumn(id: string) {

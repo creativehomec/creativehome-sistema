@@ -546,6 +546,10 @@ alter table gallery_clients
   add column if not exists payment_day integer
     check (payment_day between 1 and 31);
 
+-- Cor do rótulo do cliente nos cards de Entregas (ver
+-- supabase/migrations/0054_add_client_color.sql). Vazio = cor automática.
+alter table gallery_clients add column if not exists color text;
+
 -- Arquivar cliente sem perder o histórico (ver
 -- supabase/migrations/0045_archive_clients.sql).
 alter table gallery_clients
