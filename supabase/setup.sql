@@ -585,3 +585,26 @@ select * from (values
   ('Entregue', '#10b981', 4)
 ) as seed(name, color, position)
 where not exists (select 1 from backlog_columns);
+
+-- Referências de vídeo no guia e carrossel inteiro nas referências por link
+-- (ver supabase/migrations/0050_guide_video_refs_and_carousels.sql).
+
+create table if not exists video_reference_items (
+  id uuid primary key default gen_random_uuid(),
+  guide_id uuid not null references guides(id) on delete cascade,
+  position integer not null default 0,
+  image_url text not null,
+  source_url text,
+  caption text not null default '',
+  selected boolean not null default false,
+  gallery_urls text[] not null default '{}'
+);
+
+create index if not exists video_reference_items_guide_id_idx
+  on video_reference_items(guide_id);
+
+alter table video_reference_items enable row level security;
+
+alter table photo_items add column if not exists gallery_urls text[] not null default '{}';
+alter table card_items add column if not exists gallery_urls text[] not null default '{}';
+alter table visual_references add column if not exists gallery_urls text[] not null default '{}';

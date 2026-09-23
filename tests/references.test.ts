@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isLikelyImageUrl, toPdfSafeImageUrl } from "@/lib/references";
+import {
+  embedUrlFor,
+  isLikelyImageUrl,
+  isLikelyVideoUrl,
+  parseInstagramCarousel,
+  toPdfSafeImageUrl,
+  youtubeVideoId,
+} from "@/lib/references";
 
 describe("isLikelyImageUrl", () => {
   it("aceita extensão no caminho", () => {
@@ -63,5 +70,61 @@ describe("toPdfSafeImageUrl", () => {
 
   it("devolve a entrada quando não é URL válida", () => {
     expect(toPdfSafeImageUrl("nao-e-url")).toBe("nao-e-url");
+  });
+});
+
+describe("youtubeVideoId", () => {
+  it("acha o id nas formas de link do YouTube", () => {
+    expect(youtubeVideoId("https://youtu.be/dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
+    expect(youtubeVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10")).toBe(
+      "dQw4w9WgXcQ"
+    );
+    expect(youtubeVideoId("https://www.youtube.com/shorts/abc123XYZ")).toBe(
+      "abc123XYZ"
+    );
+  });
+
+  it("ignora link de outro site, mesmo com ?v=", () => {
+    expect(youtubeVideoId("https://exemplo.com/watch?v=dQw4w9WgXcQ")).toBeNull();
+  });
+});
+
+describe("isLikelyVideoUrl", () => {
+  it("aceita arquivo de vídeo servido direto", () => {
+    expect(isLikelyVideoUrl("https://exemplo.com/clipe.MP4")).toBe(true);
+  });
+
+  it("recusa página que só fala de vídeo", () => {
+    expect(isLikelyVideoUrl("https://vimeo.com/123456")).toBe(false);
+  });
+});
+
+// Recorte no formato real da página de embed: JSON escapado dentro de string.
+const slide = (n: number) =>
+  `{\\"node\\":{\\"display_url\\":\\"https:\\\\\\/\\\\\\/cdn.fbcdn.net\\\\\\/${n}.jpg?k=a\\\\u00253D\\"}}`;
+
+describe("parseInstagramCarousel", () => {
+  it("devolve todas as imagens do carrossel, na ordem e decodificadas", () => {
+    const html = `\\"display_url\\":\\"capa-fora\\",\\"edge_sidecar_to_children\\":{\\"edges\\":[${slide(1)},${slide(2)},${slide(1)}]}`;
+    expect(parseInstagramCarousel(html)).toEqual([
+      "https://cdn.fbcdn.net/1.jpg?k=a%3D",
+      "https://cdn.fbcdn.net/2.jpg?k=a%3D",
+    ]);
+  });
+
+  it("post que não é carrossel não tem slides", () => {
+    expect(parseInstagramCarousel(`\\"display_url\\":\\"x\\"`)).toEqual([]);
+  });
+});
+
+describe("embedUrlFor", () => {
+  it.each([
+    ["https://www.instagram.com/reel/DdcaFAYP994/?stkn=x", "https://www.instagram.com/reel/DdcaFAYP994/embed/"],
+    ["https://youtu.be/dQw4w9WgXcQ", "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"],
+    ["https://vimeo.com/123456", "https://player.vimeo.com/video/123456?autoplay=1"],
+    ["https://www.instagram.com/p/DdhPJiWnFsQ/", null],
+    [null, null],
+  ])("%s", (url, expected) => {
+    expect(embedUrlFor(url)).toBe(expected);
   });
 });
