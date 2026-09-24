@@ -292,6 +292,15 @@ export interface BacklogCardInput {
   sent_whatsapp: boolean;
   tags: string[];
   backup_location: string | null;
+}
+
+/**
+ * Cobrança da entrega. Fica fora de BacklogCardInput de propósito: o quadro
+ * é do time e não mostra dinheiro; quem lança valor e pagamento é o
+ * financeiro, na tela de Faturamento. Separados, salvar um card no quadro
+ * não tem como apagar o que o financeiro lançou.
+ */
+export interface BacklogCardBilling {
   contract_type: ContractType | null;
   custom_service: string | null;
   service_id: string | null;
@@ -320,6 +329,11 @@ export function readBacklogCardInput(formData: FormData): BacklogCardInput {
     sent_whatsapp: formData.get("sent_whatsapp") === "on",
     tags: parseBacklogTags(formData.get("tags")),
     backup_location: normalizeText(formData.get("backup_location")),
+  };
+}
+
+export function readBacklogCardBilling(formData: FormData): BacklogCardBilling {
+  return {
     contract_type: normalizeContractType(formData.get("contract_type")),
     custom_service: normalizeText(formData.get("custom_service")),
     service_id: normalizeUuid(formData.get("service_id")),
@@ -365,13 +379,6 @@ export async function createBacklogCard(
       sent_whatsapp_at: fields.sent_whatsapp ? new Date().toISOString() : null,
       tags: fields.tags ?? [],
       backup_location: fields.backup_location ?? null,
-      contract_type: fields.contract_type ?? null,
-      custom_service: fields.custom_service ?? null,
-      service_id: fields.service_id ?? null,
-      quantity: fields.quantity ?? 1,
-      unit_price_cents: fields.unit_price_cents ?? null,
-      paid_at: fields.paid_at ?? null,
-      payment_method: fields.payment_method ?? null,
     })
     .select("*")
     .single();
@@ -472,13 +479,6 @@ export async function updateBacklogCard(id: string, fields: BacklogCardInput) {
       sent_whatsapp_at: sentAt,
       tags: fields.tags,
       backup_location: fields.backup_location,
-      contract_type: fields.contract_type,
-      custom_service: fields.custom_service,
-      service_id: fields.service_id,
-      quantity: fields.quantity,
-      unit_price_cents: fields.unit_price_cents,
-      paid_at: fields.paid_at,
-      payment_method: fields.payment_method,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
@@ -486,6 +486,18 @@ export async function updateBacklogCard(id: string, fields: BacklogCardInput) {
   if (error) throw error;
 
   await setBacklogCardAssignees(id, fields.assignee_ids);
+}
+
+export async function updateBacklogCardBilling(
+  id: string,
+  fields: BacklogCardBilling
+) {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("backlog_cards")
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 /** Agenda do calendário: data, hora e duração num toque só. */

@@ -9,11 +9,23 @@ import {
   updateService,
 } from "@/lib/billing";
 import { getCurrentSession, requireFeature } from "@/lib/session";
+import { readBacklogCardBilling, updateBacklogCardBilling } from "@/lib/backlog";
 
 function revalidateBilling() {
   revalidatePath("/admin/clientes/faturamento");
   revalidatePath("/admin/backlog");
   revalidatePath("/admin/clientes/resumo");
+}
+
+// ------------------------------------------------------------- entregas
+
+/** Valor, contrato e pagamento de uma entrega — o quadro não mexe nisso. */
+export async function updateDeliveryBillingAction(formData: FormData) {
+  await requireFeature("financeiro");
+  const cardId = String(formData.get("card_id") ?? "");
+  if (!cardId) return;
+  await updateBacklogCardBilling(cardId, readBacklogCardBilling(formData));
+  revalidateBilling();
 }
 
 // -------------------------------------------------------------- catálogo

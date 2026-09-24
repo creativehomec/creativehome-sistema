@@ -17,12 +17,6 @@ import {
   type BacklogCard,
   type BacklogChecklistItem,
 } from "@/lib/backlogTypes";
-import { formatBRL, lineTotalCents } from "@/lib/billingTypes";
-import {
-  CONTRACT_TYPE_LABELS,
-  PAYMENT_METHOD_LABELS,
-  formatBacklogDateShort,
-} from "@/lib/backlogTypes";
 import { createBacklogNoteAction } from "@/app/admin/kanbanActions";
 
 function formatDate(iso: string): string {
@@ -173,34 +167,6 @@ export function BacklogCardView({
 
           <Field label="Onde foi feito o backup">
             {card.backup_location ?? "—"}
-          </Field>
-
-          {card.unit_price_cents !== null ? (
-            <Field label="Cobrança" numeric>
-              {card.quantity} × {formatBRL(card.unit_price_cents)} ={" "}
-              <strong>{formatBRL(lineTotalCents(card))}</strong>
-            </Field>
-          ) : null}
-
-          {card.contract_type ? (
-            <Field label="Contrato">
-              {CONTRACT_TYPE_LABELS[card.contract_type]}
-            </Field>
-          ) : null}
-
-          <Field label="Pagamento">
-            {card.paid_at || card.payment_method
-              ? [
-                  card.paid_at
-                    ? `Pago em ${formatBacklogDateShort(card.paid_at)}`
-                    : "Pago",
-                  card.payment_method
-                    ? PAYMENT_METHOD_LABELS[card.payment_method]
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              : "Ainda não recebido"}
           </Field>
 
           <Field label="Guia de captação">{guideTitle ?? "—"}</Field>

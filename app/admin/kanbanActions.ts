@@ -106,8 +106,6 @@ export async function updateBacklogColumnAction(formData: FormData) {
   await updateBacklogColumn(String(formData.get("id")), {
     name: String(formData.get("name") ?? ""),
     color: String(formData.get("color") ?? "#6b7280"),
-    billable: formData.get("billable") === "on",
-    paid: formData.get("paid") === "on",
   });
   revalidateBacklog();
 }

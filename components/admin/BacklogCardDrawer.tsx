@@ -11,19 +11,13 @@ import {
 import {
   BACKLOG_FORMATS,
   BACKLOG_FORMAT_LABELS,
-  CONTRACT_TYPES,
-  CONTRACT_TYPE_LABELS,
-  PAYMENT_METHODS,
-  PAYMENT_METHOD_LABELS,
   type BacklogCard,
   type BacklogActivity,
   type BacklogChecklistItem,
   type BacklogClientOption,
   type BacklogGuideOption,
   type BacklogUserOption,
-  type ServiceOption,
 } from "@/lib/backlogTypes";
-import { formatBRL } from "@/lib/billingTypes";
 import {
   createBacklogChecklistItemAction,
   createBacklogNoteAction,
@@ -289,115 +283,6 @@ function ActivitySection({
   );
 }
 
-/**
- * Cobrança da entrega. Escolher um serviço só preenche o valor sugerido — o
- * preço fica gravado no card, então mexer no catálogo depois não altera o que
- * já foi lançado.
- */
-function BillingFields({
-  card,
-  services,
-}: {
-  card: BacklogCard;
-  services: ServiceOption[];
-}) {
-  const [price, setPrice] = useState(
-    card.unit_price_cents === null
-      ? ""
-      : (card.unit_price_cents / 100).toFixed(2).replace(".", ",")
-  );
-
-  return (
-    <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
-      <p className={labelClass}>Cobrança</p>
-
-      <input
-        name="custom_service"
-        defaultValue={card.custom_service ?? ""}
-        placeholder="Produto personalizado (opcional)"
-        className={`${inputClass} mb-2`}
-      />
-
-      <div className="grid grid-cols-[1fr_5rem_7rem] gap-2">
-        <select
-          name="service_id"
-          aria-label="Serviço"
-          defaultValue={card.service_id ?? "none"}
-          onChange={(event) => {
-            const service = services.find((item) => item.id === event.target.value);
-            if (service) {
-              setPrice((service.price_cents / 100).toFixed(2).replace(".", ","));
-            }
-          }}
-          className={inputClass}
-        >
-          <option value="none">Sem serviço</option>
-          {services.map((service) => (
-            <option key={service.id} value={service.id}>
-              {service.name} — {formatBRL(service.price_cents)}
-            </option>
-          ))}
-        </select>
-
-        <input
-          name="quantity"
-          type="number"
-          min={1}
-          step={1}
-          aria-label="Quantidade"
-          defaultValue={card.quantity ?? 1}
-          className={inputClass}
-        />
-
-        <input
-          name="unit_price_cents"
-          inputMode="decimal"
-          aria-label="Valor unitário"
-          placeholder="R$ 0,00"
-          value={price}
-          onChange={(event) => setPrice(event.target.value)}
-          className={inputClass}
-        />
-      </div>
-
-      {/* Data e forma normalmente vêm do diálogo que aparece ao arrastar para
-          Entregue; aqui elas existem para corrigir sem mover o card de novo. */}
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <label className="text-xs font-medium text-neutral-600">
-          Pago em
-          <input
-            type="date"
-            name="paid_at"
-            defaultValue={card.paid_at ?? ""}
-            className={`mt-1 ${inputClass}`}
-          />
-        </label>
-        <label className="text-xs font-medium text-neutral-600">
-          Forma
-          <select
-            name="payment_method"
-            defaultValue={card.payment_method ?? "none"}
-            className={`mt-1 ${inputClass}`}
-          >
-            <option value="none">Não informada</option>
-            {PAYMENT_METHODS.map((option) => (
-              <option key={option} value={option}>
-                {PAYMENT_METHOD_LABELS[option]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <p className="mt-1.5 text-xs text-neutral-500">
-        Escrito no produto personalizado, é esse nome que aparece na nota — o
-        catálogo continua intacto. Entra na nota do mês pela data da entrega, quando esta entrega estiver
-        numa coluna marcada como &quot;entra na nota&quot;.
-      </p>
-    </div>
-  );
-}
-
 export function BacklogCardDrawer({
   card,
   checklist,
@@ -406,7 +291,6 @@ export function BacklogCardDrawer({
   clients,
   guides,
   users,
-  services = [],
   onClose,
   onSave,
   onDelete,
@@ -419,7 +303,6 @@ export function BacklogCardDrawer({
   clients: BacklogClientOption[];
   guides: BacklogGuideOption[];
   users: BacklogUserOption[];
-  services?: ServiceOption[];
   onClose: () => void;
   onSave: (formData: FormData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -567,39 +450,6 @@ export function BacklogCardDrawer({
               })}
             </div>
           </div>
-
-          <div>
-            <p className={labelClass}>Tipo de contrato</p>
-            <div className="flex flex-wrap gap-1.5">
-              {CONTRACT_TYPES.map((option) => (
-                <label
-                  key={option}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 has-checked:border-neutral-900 has-checked:bg-neutral-900 has-checked:text-white pointer-coarse:min-h-11"
-                >
-                  <input
-                    type="radio"
-                    name="contract_type"
-                    value={option}
-                    defaultChecked={card.contract_type === option}
-                    className="sr-only"
-                  />
-                  {CONTRACT_TYPE_LABELS[option]}
-                </label>
-              ))}
-              <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-500 has-checked:border-neutral-900 has-checked:bg-neutral-900 has-checked:text-white pointer-coarse:min-h-11">
-                <input
-                  type="radio"
-                  name="contract_type"
-                  value="none"
-                  defaultChecked={!card.contract_type}
-                  className="sr-only"
-                />
-                Não definido
-              </label>
-            </div>
-          </div>
-
-          <BillingFields card={card} services={services} />
 
           <div>
             <label className={labelClass} htmlFor="backlog-client">

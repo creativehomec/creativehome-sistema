@@ -54,8 +54,6 @@ import {
   filterBacklogCards,
   dueDateOf,
   formatBacklogDateShort,
-  CONTRACT_TYPE_LABELS,
-  PAYMENT_METHOD_LABELS,
   type BacklogBoard,
   type BacklogCard,
   type BacklogChecklistItem,
@@ -304,17 +302,6 @@ function CardBody({
           <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600">
             {BACKLOG_FORMAT_LABELS[card.format]}
           </span>
-          {card.contract_type ? (
-            <span
-              className={`rounded px-1.5 py-0.5 text-[11px] ${
-                card.contract_type === "mensal"
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "bg-orange-50 text-orange-700"
-              }`}
-            >
-              {CONTRACT_TYPE_LABELS[card.contract_type]}
-            </span>
-          ) : null}
           {assigneeNames.map((name) => (
             <span
               key={name}
@@ -326,17 +313,6 @@ function CardBody({
           {card.post_date ? (
             <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-700">
               {formatBacklogDateShort(card.post_date)}
-            </span>
-          ) : null}
-          {/* Basta a data para o selo aparecer: uma entrega paga sem forma
-              anotada continua sendo uma entrega paga. */}
-          {card.paid_at || card.payment_method ? (
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] text-emerald-700">
-              Pago
-              {card.paid_at ? ` ${formatBacklogDateShort(card.paid_at)}` : ""}
-              {card.payment_method
-                ? ` · ${PAYMENT_METHOD_LABELS[card.payment_method]}`
-                : ""}
             </span>
           ) : null}
           {checklist ? (
@@ -590,26 +566,6 @@ function ColumnHeader({
             </option>
           ))}
         </select>
-        <div className="flex flex-col gap-1.5">
-          <label className="flex items-center gap-2 text-xs text-neutral-600">
-            <input
-              type="checkbox"
-              name="billable"
-              defaultChecked={column.billable}
-              className="size-3.5"
-            />
-            Conta como entrega na nota do mês
-          </label>
-          <label className="flex items-center gap-2 text-xs text-neutral-600">
-            <input
-              type="checkbox"
-              name="paid"
-              defaultChecked={column.paid}
-              className="size-3.5"
-            />
-            O pagamento já entrou
-          </label>
-        </div>
         <div className="flex items-center gap-3">
           <button
             type="submit"
@@ -664,20 +620,6 @@ function ColumnHeader({
         {column.name}
       </p>
       <span className="text-xs text-neutral-400">{count}</span>
-      {/* `title` é tooltip de mouse e não existe no celular, que é onde o
-          fechamento do mês costuma ser conferido — então o rótulo precisa se
-          explicar sozinho. */}
-      {column.billable ? (
-        column.paid ? (
-          <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">
-            na nota · pago
-          </span>
-        ) : (
-          <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
-            na nota · a receber
-          </span>
-        )
-      ) : null}
       <button
         type="button"
         onClick={() => setEditing(true)}
@@ -1255,7 +1197,6 @@ export function KanbanBoard({
           clients={board.clients}
           guides={board.guides}
           users={board.users}
-          services={board.services}
           onClose={() => {
             setEditingCardId(null);
             setOpenCardId(null);

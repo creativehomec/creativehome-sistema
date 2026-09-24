@@ -90,24 +90,21 @@ export async function getMonthDeliveries(
   const from = monthKey(month);
   const to = nextMonthKey(from);
 
-  // Toda coluna faturável entra: a entrega feita já é da nota do mês, paga ou
-  // não. A coluna diz qual das duas.
+  // Toda coluna faturável entra (hoje, Entregue): a entrega feita já é da
+  // nota do mês, paga ou não.
   const { data: columns, error: columnsError } = await supabase
     .from("backlog_columns")
-    .select("id, paid")
+    .select("id")
     .eq("billable", true);
   if (columnsError) throw columnsError;
 
-  const paidByColumn = new Map(
-    (columns ?? []).map((column) => [column.id as string, Boolean(column.paid)])
-  );
-  const columnIds = [...paidByColumn.keys()];
+  const columnIds = (columns ?? []).map((column) => column.id as string);
   if (columnIds.length === 0) return [];
 
   const { data, error } = await supabase
     .from("backlog_cards")
     .select(
-      "id, column_id, title, post_date, quantity, unit_price_cents, paid_at, payment_method, custom_service, services(name)"
+      "id, title, post_date, quantity, unit_price_cents, paid_at, payment_method, custom_service, service_id, contract_type, services(name)"
     )
     .eq("client_id", clientId)
     .in("column_id", columnIds)
@@ -131,9 +128,15 @@ export async function getMonthDeliveries(
       post_date: (row.post_date as string | null) ?? null,
       quantity: (row.quantity as number) ?? 1,
       unit_price_cents: (row.unit_price_cents as number | null) ?? 0,
-      paid: paidByColumn.get(row.column_id as string) ?? false,
+      // Pago é o que o financeiro registrou, não a coluna onde o card está:
+      // o quadro do time não sabe de dinheiro.
+      paid: Boolean(row.paid_at),
       paid_at: (row.paid_at as string | null) ?? null,
       payment_method: (row.payment_method as string | null) ?? null,
+      service_id: (row.service_id as string | null) ?? null,
+      custom_service: (row.custom_service as string | null) ?? null,
+      contract_type: (row.contract_type as string | null) ?? null,
+      price_set: row.unit_price_cents !== null,
     } satisfies MonthDelivery;
   });
 }

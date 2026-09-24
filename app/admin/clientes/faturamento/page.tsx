@@ -28,6 +28,11 @@ import {
 import { CloseMonthForm } from "@/components/admin/CloseMonthForm";
 import { ClientSelect } from "@/components/admin/ClientSelect";
 import { MonthTimeline } from "@/components/admin/MonthTimeline";
+import { DeliveryBillingToggle } from "@/components/admin/DeliveryBillingForm";
+import {
+  normalizeContractType,
+  normalizePaymentMethod,
+} from "@/lib/backlogTypes";
 
 export const dynamic = "force-dynamic";
 
@@ -197,6 +202,26 @@ export default async function FaturamentoPage({
                   <span className="w-24 text-right font-medium text-neutral-900 tabular-nums">
                     {formatBRL(lineTotalCents(delivery))}
                   </span>
+                  <div className="w-full">
+                    <DeliveryBillingToggle
+                      priceSet={delivery.price_set}
+                      services={services.filter((service) => service.active)}
+                      delivery={{
+                        card_id: delivery.card_id,
+                        contract_type: normalizeContractType(delivery.contract_type),
+                        custom_service: delivery.custom_service,
+                        service_id: delivery.service_id,
+                        quantity: delivery.quantity,
+                        unit_price_cents: delivery.price_set
+                          ? delivery.unit_price_cents
+                          : null,
+                        paid_at: delivery.paid_at,
+                        payment_method: normalizePaymentMethod(
+                          delivery.payment_method
+                        ),
+                      }}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

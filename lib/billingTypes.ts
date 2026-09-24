@@ -35,6 +35,12 @@ export interface MonthDelivery {
   paid: boolean;
   paid_at: string | null;
   payment_method: string | null;
+  /** Campos crus da cobrança, pra o financeiro editar sem abrir o card. */
+  service_id: string | null;
+  custom_service: string | null;
+  contract_type: string | null;
+  /** null quando ninguém lançou valor ainda (unit_price_cents vem como 0). */
+  price_set: boolean;
 }
 
 export interface MonthlyInvoiceItem {
