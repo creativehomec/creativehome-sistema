@@ -187,7 +187,7 @@ export interface BacklogClientOption {
   name: string;
   /** Dia de vencimento, para marcar o que já passou da data no quadro. */
   payment_day: number | null;
-  /** Chave de CLIENT_COLORS escolhida à mão; null = cor automática. */
+  /** Chave de CLIENT_COLORS ou hex (#rrggbb) escolhido à mão; null = automática. */
   color: string | null;
 }
 
@@ -214,24 +214,50 @@ export type ClientColorKey = keyof typeof CLIENT_COLORS;
 
 const CLIENT_COLOR_KEYS = Object.keys(CLIENT_COLORS) as ClientColorKey[];
 
-export function isClientColorKey(value: string): value is ClientColorKey {
-  return value in CLIENT_COLORS;
+const HEX = /^#[0-9a-f]{6}$/i;
+
+function isClientColorKey(value: string): value is ClientColorKey {
+  return Object.hasOwn(CLIENT_COLORS, value);
+}
+
+/** O que pode ir pro banco: uma cor da paleta ou uma cor livre em hex. */
+export function isClientColor(value: string): boolean {
+  return isClientColorKey(value) || HEX.test(value);
 }
 
 /**
- * Cor do cliente: a escolhida, ou uma automática tirada do id. Automática
- * porque ninguém vai abrir as configurações pra pintar trinta clientes — e
- * derivada do id, não da posição na lista, pra não trocar de cor quando entra
- * cliente novo.
+ * Cor do cliente: a escolhida, ou uma da paleta tirada do id. Automática
+ * porque ninguém vai abrir o cadastro pra pintar trinta clientes — e derivada
+ * do id, não da posição na lista, pra não trocar quando entra cliente novo.
  */
-export function clientColorKey(client: {
-  id: string;
-  color: string | null;
-}): ClientColorKey {
-  if (client.color && isClientColorKey(client.color)) return client.color;
+export function clientColor(client: { id: string; color: string | null }): string {
+  if (client.color && isClientColor(client.color)) return client.color;
   let hash = 0;
   for (const char of client.id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return CLIENT_COLOR_KEYS[hash % CLIENT_COLOR_KEYS.length];
+}
+
+/** A cor cheia, pra bolinha e pro seletor nativo (que só aceita hex). */
+export function clientColorSolid(color: string): string {
+  return isClientColorKey(color) ? CLIENT_COLORS[color].fg : color;
+}
+
+/**
+ * Fundo e texto do rótulo. As da paleta têm o par medido; a cor livre vira
+ * um fundo bem claro e um texto bem escuro do mesmo tom — misturados pelo
+ * próprio CSS, pra qualquer cor escolhida continuar legível.
+ */
+export function clientColorStyle(color: string): {
+  backgroundColor: string;
+  color: string;
+} {
+  if (isClientColorKey(color)) {
+    return { backgroundColor: CLIENT_COLORS[color].bg, color: CLIENT_COLORS[color].fg };
+  }
+  return {
+    backgroundColor: `color-mix(in oklab, ${color} 16%, white)`,
+    color: `color-mix(in oklab, ${color} 55%, black)`,
+  };
 }
 
 /**

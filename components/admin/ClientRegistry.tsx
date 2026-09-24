@@ -5,10 +5,11 @@ import { useState, useTransition } from "react";
 import { formatBRL } from "@/lib/billingTypes";
 import type { GalleryClient } from "@/lib/galleries";
 import {
-  CLIENT_COLORS,
-  clientColorKey,
-  type ClientColorKey,
+  clientColor,
+  clientColorSolid,
+  clientColorStyle,
 } from "@/lib/backlogTypes";
+import { ClientColorPicker } from "@/components/admin/ClientColorPicker";
 import {
   createClientAction,
   deleteClientAction,
@@ -60,6 +61,8 @@ function ClientRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Já nasce com a cor que o quadro mostra hoje, escolhida ou automática.
+  const [color, setColor] = useState(() => clientColor(client));
 
   if (editing) {
     return (
@@ -163,36 +166,23 @@ function ClientRow({
             />
           </Campo>
 
-          {/* Radios nativos com cara de bolinha: sem estado, sem JS, e o
-              teclado anda pelas setas como em qualquer grupo de opções. Sem
-              escolha salva, já vem marcada a automática — é a que o quadro
-              mostra hoje. */}
           <fieldset className="sm:col-span-2">
             <legend className="mb-1 text-xs font-medium text-neutral-600">
               Cor nos cards de Entregas
             </legend>
-            <div className="flex flex-wrap gap-1.5">
-              {(Object.keys(CLIENT_COLORS) as ClientColorKey[]).map((key) => (
-                <label
-                  key={key}
-                  title={CLIENT_COLORS[key].label}
-                  className="grid size-7 cursor-pointer place-items-center rounded-full has-[:checked]:ring-2 has-[:checked]:ring-neutral-900 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-neutral-500 pointer-coarse:size-10"
-                >
-                  <input
-                    type="radio"
-                    name="color"
-                    value={key}
-                    defaultChecked={clientColorKey(client) === key}
-                    aria-label={CLIENT_COLORS[key].label}
-                    className="sr-only"
-                  />
-                  <span
-                    aria-hidden
-                    className="size-5 rounded-full border border-black/10"
-                    style={{ backgroundColor: CLIENT_COLORS[key].fg }}
-                  />
-                </label>
-              ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <ClientColorPicker
+                name="color"
+                value={color}
+                onChange={setColor}
+                label={`Cor de ${client.name}`}
+              />
+              <span
+                className="rounded px-1.5 py-0.5 text-[11px] font-medium"
+                style={clientColorStyle(color)}
+              >
+                {client.name}
+              </span>
             </div>
           </fieldset>
 
@@ -274,7 +264,7 @@ function ClientRow({
         <span
           aria-hidden
           className="mr-2 inline-block size-2.5 rounded-full align-[0.05em]"
-          style={{ backgroundColor: CLIENT_COLORS[clientColorKey(client)].fg }}
+          style={{ backgroundColor: clientColorSolid(clientColor(client)) }}
         />
         {client.name}
         {client.contact_name ? (

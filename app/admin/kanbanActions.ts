@@ -1,13 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCurrentSession, requireFeature } from "@/lib/session";
+import { getCurrentSession } from "@/lib/session";
 import {
   BACKUP_QUESTION,
   PAYMENT_METHOD_LABELS,
   PAYMENT_QUESTION,
   formatBacklogDateShort,
-  isClientColorKey,
   normalizePaymentMethod,
   type BacklogPrompt,
 } from "@/lib/backlogTypes";
@@ -26,7 +25,6 @@ import {
   moveBacklogCard,
   readBacklogCardInput,
   reorderBacklogColumns,
-  setClientColor,
   setBacklogCardApproved,
   setBacklogCardColumn,
   setBacklogCardPayment,
@@ -116,17 +114,6 @@ export async function updateBacklogColumnAction(formData: FormData) {
 
 export async function reorderBacklogColumnsAction(orderedIds: string[]) {
   await reorderBacklogColumns(orderedIds);
-  revalidateBacklog();
-}
-
-/** `null` volta o cliente pra cor automática. */
-export async function setClientColorAction(
-  clientId: string,
-  color: string | null
-) {
-  await requireFeature("backlog");
-  if (color !== null && !isClientColorKey(color)) return;
-  await setClientColor(clientId, color);
   revalidateBacklog();
 }
 

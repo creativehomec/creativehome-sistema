@@ -1,5 +1,5 @@
 import "server-only";
-import { isClientColorKey } from "@/lib/backlogTypes";
+import { isClientColor } from "@/lib/backlogTypes";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isRenderableMediaMimeType } from "@/lib/googleDrive";
 import { isLikelyImageUrl } from "@/lib/references";
@@ -22,7 +22,7 @@ export interface GalleryClient {
   notes: string | null;
   /** Dia do mês em que costuma pagar; vale para o mês seguinte ao da entrega. */
   payment_day: number | null;
-  /** Cor do rótulo nos cards — chave de CLIENT_COLORS; null = automática. */
+  /** Cor do rótulo nos cards — chave de CLIENT_COLORS ou hex; null = automática. */
   color: string | null;
   /** Cliente fora de atividade: sai das listas, mantém o histórico. */
   archived_at: string | null;
@@ -435,7 +435,7 @@ export function readGalleryClientDetails(
     notes: textOrNull(formData.get("notes")),
     payment_day:
       Number.isInteger(day) && day >= 1 && day <= 31 ? day : null,
-    color: isClientColorKey(color) ? color : null,
+    color: isClientColor(color) ? color : null,
   };
 }
 

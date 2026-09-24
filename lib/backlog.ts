@@ -269,15 +269,6 @@ export async function reorderBacklogColumns(orderedIds: string[]) {
   );
 }
 
-export async function setClientColor(clientId: string, color: string | null) {
-  const supabase = getSupabaseServerClient();
-  const { error } = await supabase
-    .from("gallery_clients")
-    .update({ color })
-    .eq("id", clientId);
-  if (error) throw error;
-}
-
 export async function deleteBacklogColumn(id: string) {
   const supabase = getSupabaseServerClient();
   const { error } = await supabase.from("backlog_columns").delete().eq("id", id);
