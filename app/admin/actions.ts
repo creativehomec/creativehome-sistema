@@ -39,11 +39,10 @@ export async function setDailyTodoAssigneesAction(
   const { text, added } = await setDailyTodoAssignees(id, userIds);
   const session = await getCurrentSession();
   // Só quem entrou agora recebe aviso — quem já era responsável não é
-  // notificado de novo a cada mexida na lista — e nunca quem fez a ação, que
-  // seria avisar a pessoa do que ela mesma acabou de clicar.
-  const toNotify = added.filter((userId) => userId !== session?.userId);
+  // notificado de novo a cada mexida na lista. Quem se atribui também recebe,
+  // igual às Entregas: o aviso vira lembrete no celular.
   await Promise.all(
-    toNotify.map((userId) =>
+    added.map((userId) =>
       notifyUser({
         userId,
         actorId: session?.userId ?? null,
