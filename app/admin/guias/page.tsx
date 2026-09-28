@@ -4,6 +4,7 @@ import { PastasClientes } from "@/components/admin/PastasClientes";
 import { agruparPorCliente, formatMonthLabel, monthKey } from "@/lib/guideFolders";
 import { listGuides, type Guide } from "@/lib/guides";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { getCurrentUsername } from "@/lib/session";
 import { createGuideAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -51,8 +52,9 @@ export default async function AdminDashboard({
     tag: String(params.tag ?? ""),
   };
 
-  const [guides] = await Promise.all([
+  const [guides, username] = await Promise.all([
     listGuides(),
+    getCurrentUsername(),
   ]);
 
   const monthOptions = Array.from(
@@ -66,10 +68,11 @@ export default async function AdminDashboard({
   const hoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
   const pastas = agruparPorCliente(filteredGuides, hoje);
   return (
-    <div className="mx-auto w-full max-w-6xl pb-10">
+    <div className="mx-auto w-full max-w-6xl py-10">
       <AdminHeader
         title="Guias de gravação"
         trail={[{ label: "Admin", href: "/admin" }, { label: "Guias" }]}
+        username={username}
       />
 
       <BuscaGuias
