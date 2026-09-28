@@ -625,3 +625,20 @@ alter table video_reference_items enable row level security;
 alter table photo_items add column if not exists gallery_urls text[] not null default '{}';
 alter table card_items add column if not exists gallery_urls text[] not null default '{}';
 alter table visual_references add column if not exists gallery_urls text[] not null default '{}';
+
+-- Inscrições de Web Push por aparelho (ver
+-- supabase/migrations/0055_push_subscriptions.sql).
+
+create table if not exists push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists push_subscriptions_user_idx
+  on push_subscriptions(user_id);
+
+alter table push_subscriptions enable row level security;

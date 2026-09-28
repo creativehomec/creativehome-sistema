@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: brand.productName,
   description: brand.description,
+  // Aberto pela Tela de Início do iPhone, vira app sem a barra do Safari —
+  // condição do iOS pra entregar notificações push.
+  appleWebApp: { capable: true, title: brand.name },
 };
 
 /**
