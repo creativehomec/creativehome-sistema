@@ -14,19 +14,25 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar";
 
 /**
- * O callback do OAuth é compartilhado com o fluxo do Drive, e o `state` diz
- * qual dos dois está voltando. Assim não é preciso cadastrar uma segunda URL
- * de redirecionamento no Google Cloud Console.
+ * Client próprio, separado do Drive.
+ *
+ * O Drive pede `drive.readonly`, que o Google classifica como *restricted*:
+ * publicar um client com esse escopo exige auditoria de segurança paga. Como
+ * a equipe inteira precisa autorizar a agenda, e `calendar` sozinho é apenas
+ * *sensitive*, os dois fluxos usam credenciais diferentes — senão a agenda
+ * ficaria esperando a auditoria do Drive pra sair do modo de teste.
+ *
+ * Consequência prática: cada client tem sua própria URL de redirecionamento,
+ * e o `state` que distinguia os fluxos no callback compartilhado deixou de
+ * existir.
  */
-export const CALENDAR_OAUTH_STATE = "calendar";
-
 function getEnv() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+  const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI;
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error(
-      "Google não configurado: defina GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_OAUTH_REDIRECT_URI no .env.local"
+      "Agenda não configurada: defina GOOGLE_CALENDAR_CLIENT_ID, GOOGLE_CALENDAR_CLIENT_SECRET e GOOGLE_CALENDAR_REDIRECT_URI no .env.local. São credenciais de um segundo client OAuth, separado do Drive."
     );
   }
   return { clientId, clientSecret, redirectUri };
@@ -44,7 +50,6 @@ export function buildCalendarAuthUrl(): string {
     // refresh_token de volta — a conexão parece dar certo e morre na
     // primeira renovação.
     prompt: "consent",
-    state: CALENDAR_OAUTH_STATE,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }

@@ -52,7 +52,7 @@ export function UpcomingPosts({ posts }: { posts: UpcomingPost[] }) {
         </h2>
         <Link
           href="/admin/backlog/calendario"
-          className="shrink-0 rounded text-xs text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="-mr-2 flex shrink-0 items-center rounded px-2 py-1 text-xs text-neutral-500 hover:text-neutral-900 pointer-coarse:min-h-11 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           Calendário
         </Link>
