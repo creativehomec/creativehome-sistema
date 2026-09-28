@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getGuideWithSections } from "@/lib/guides";
+import { getGuideWithSections, listGuideClientNames } from "@/lib/guides";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getCurrentUsername } from "@/lib/session";
 import { GeneralInfoForm } from "@/components/admin/GeneralInfoForm";
@@ -30,9 +30,10 @@ export default async function GuideEditPage({
   params: Params;
 }) {
   const { id } = await params;
-  const [guide, username] = await Promise.all([
+  const [guide, username, clientes] = await Promise.all([
     getGuideWithSections(id),
     getCurrentUsername(),
+    listGuideClientNames(),
   ]);
 
   if (!guide) notFound();
@@ -44,6 +45,16 @@ export default async function GuideEditPage({
         trail={[
           { label: "Admin", href: "/admin" },
           { label: "Guias", href: "/admin/guias" },
+          // A pasta do cliente na trilha: voltar cai no mesmo lugar de onde
+          // o guia foi aberto, com a pasta já aberta.
+          ...(guide.client_name.trim()
+            ? [
+                {
+                  label: guide.client_name.trim(),
+                  href: `/admin/guias?pasta=${encodeURIComponent(guide.client_name.trim())}`,
+                },
+              ]
+            : []),
           { label: guide.title },
         ]}
         username={username}
@@ -51,7 +62,7 @@ export default async function GuideEditPage({
 
       <div className="space-y-8">
         <PublishBox guide={guide} />
-        <GeneralInfoForm guide={guide} />
+        <GeneralInfoForm guide={guide} clientes={clientes} />
         <VideosSection
           guideId={guide.id}
           guideSlug={guide.slug}
