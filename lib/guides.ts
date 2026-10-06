@@ -80,6 +80,7 @@ export interface ShotListItem {
   shot_type: string;
   duration: string;
   notes: string;
+  done: boolean;
 }
 
 export interface ChecklistItem {
@@ -433,6 +434,12 @@ export async function toggleSceneRecorded(id: string, recorded: boolean) {
     .from("scenes")
     .update({ recorded })
     .eq("id", id);
+  if (error) throw error;
+}
+
+export async function toggleShotListItemDone(id: string, done: boolean) {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase.from("shot_list_items").update({ done }).eq("id", id);
   if (error) throw error;
 }
 

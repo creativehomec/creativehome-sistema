@@ -6,6 +6,7 @@ import {
   togglePhotoItemSelected,
   toggleVideoReferenceItemSelected,
   toggleSceneRecorded,
+  toggleShotListItemDone,
   toggleVisualReferenceSelected,
 } from "@/lib/guides";
 
@@ -50,5 +51,12 @@ export async function toggleVideoReferenceItemSelectedAction(
   selected: boolean
 ) {
   await toggleVideoReferenceItemSelected(id, selected);
+  revalidatePath(`/guia/${slug}`);
+}
+
+export async function toggleShotListItemDoneAction(formData: FormData) {
+  const id = String(formData.get("id"));
+  const slug = String(formData.get("slug"));
+  await toggleShotListItemDone(id, String(formData.get("done")) === "true");
   revalidatePath(`/guia/${slug}`);
 }

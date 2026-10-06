@@ -13,6 +13,7 @@ import {
 import { Accordion } from "@/components/Accordion";
 import { ColarRoteiro } from "@/components/admin/ColarRoteiro";
 import { DeleteButton } from "@/components/admin/DeleteButton";
+import { RichTextarea } from "@/components/admin/RichTextarea";
 import { LightboxImage } from "@/components/LightboxImage";
 import type { Scene, VideoWithScenes, VisualReference } from "@/lib/guides";
 import { buildGallery, isShowableAsImage } from "@/lib/references";
@@ -164,14 +165,14 @@ function SceneCard({
       <form action={updateSceneAction}>
         <input type="hidden" name="id" value={scene.id} />
         <input type="hidden" name="guide_id" value={guideId} />
-        <textarea
+        <RichTextarea
           name="script"
           defaultValue={scene.script}
           placeholder="Roteiro / fala / direção..."
           rows={3}
           className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
         />
-        <textarea
+        <RichTextarea
           name="description"
           defaultValue={scene.description}
           placeholder="Descrição de cena"
@@ -334,13 +335,13 @@ function VideoCard({
         <p className="mb-2 text-xs font-medium text-neutral-600">
           Cena {nextSceneNumber}
         </p>
-        <textarea
+        <RichTextarea
           name="script"
           placeholder="Roteiro / fala / direção..."
           rows={3}
           className="mb-2 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
         />
-        <textarea
+        <RichTextarea
           name="description"
           placeholder="Descrição de cena"
           rows={2}

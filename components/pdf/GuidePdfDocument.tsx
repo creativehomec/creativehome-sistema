@@ -9,6 +9,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import type { GuideWithSections } from "@/lib/guides";
+import { parseRich } from "@/lib/richText";
 import { isLikelyImageUrl, toPdfSafeImageUrl } from "@/lib/references";
 
 const styles = StyleSheet.create({
@@ -131,7 +132,7 @@ function GuidePdfDocument({ guide }: { guide: GuideWithSections }) {
                         Cena {sceneIndex + 1}
                       </Text>
                       <Text style={styles.sceneScript}>
-                        {scene.script || "-"}
+                        <Rich text={scene.script || "-"} />
                       </Text>
                       {scene.description ? (
                         <>
@@ -139,7 +140,7 @@ function GuidePdfDocument({ guide }: { guide: GuideWithSections }) {
                             Descrição de cena
                           </Text>
                           <Text style={styles.sceneScript}>
-                            {scene.description}
+                            <Rich text={scene.description} />
                           </Text>
                         </>
                       ) : null}
@@ -325,6 +326,24 @@ function GuidePdfDocument({ guide }: { guide: GuideWithSections }) {
         ) : null}
       </Page>
     </Document>
+  );
+}
+
+function Rich({ text }: { text: string }) {
+  return (
+    <>
+      {parseRich(text).map((s, k) => (
+        <Text
+          key={k}
+          style={{
+            fontFamily: s.b ? (s.i ? "Helvetica-BoldOblique" : "Helvetica-Bold") : s.i ? "Helvetica-Oblique" : "Helvetica",
+            textDecoration: s.u ? "underline" : "none",
+          }}
+        >
+          {s.text}
+        </Text>
+      ))}
+    </>
   );
 }
 

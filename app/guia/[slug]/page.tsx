@@ -4,6 +4,7 @@ import {
   toggleCardItemSelectedAction,
   togglePhotoItemSelectedAction,
   toggleSceneRecordedAction,
+  toggleShotListItemDoneAction,
   toggleVideoReferenceItemSelectedAction,
   toggleVisualReferenceSelectedAction,
 } from "./actions";
@@ -17,6 +18,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { LightboxImage } from "@/components/LightboxImage";
 import { Accordion } from "@/components/Accordion";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { RichText } from "@/components/RichText";
 
 // Pro cliente, "Ver original" só nos vídeos: em foto e carrossel o link pro
 // post tira a pessoa do guia sem mostrar nada a mais.
@@ -231,17 +233,21 @@ export default async function PublicGuidePage({
                               </button>
                             </form>
                           </div>
-                          <p className="whitespace-pre-wrap text-sm text-neutral-600">
-                            {scene.script || "—"}
+                          <p className="whitespace-pre-wrap text-lg font-medium leading-snug text-neutral-900">
+                            <RichText text={scene.script || "—"} />
                           </p>
 
                           {scene.description ? (
-                            <div className="mt-2">
-                              <p className="text-xs font-medium text-neutral-500">
+                            <div
+                              className={`mt-3 rounded-md p-3 ${
+                                scene.recorded ? "bg-green-100" : "bg-neutral-200"
+                              }`}
+                            >
+                              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                                 Descrição de cena
                               </p>
-                              <p className="whitespace-pre-wrap text-sm text-neutral-600">
-                                {scene.description}
+                              <p className="whitespace-pre-wrap text-sm text-neutral-700">
+                                <RichText text={scene.description} />
                               </p>
                             </div>
                           ) : null}
@@ -349,6 +355,7 @@ export default async function PublicGuidePage({
               <table className="w-full text-left text-sm">
                 <thead className="bg-neutral-100 text-xs uppercase text-neutral-500">
                   <tr>
+                    <th className="w-8 px-3 py-2"></th>
                     <th className="px-3 py-2">#</th>
                     <th className="px-3 py-2">Plano</th>
                     <th className="px-3 py-2">Tipo</th>
@@ -358,11 +365,32 @@ export default async function PublicGuidePage({
                 </thead>
                 <tbody>
                   {guide.shot_list_items.map((item, index) => (
-                    <tr key={item.id} className="border-t border-neutral-200">
+                    <tr
+                      key={item.id}
+                      className={`border-t border-neutral-200 ${item.done ? "bg-green-50 text-neutral-400" : ""}`}
+                    >
+                      <td className="px-3 py-2">
+                        <form action={toggleShotListItemDoneAction}>
+                          <input type="hidden" name="id" value={item.id} />
+                          <input type="hidden" name="slug" value={guide.slug} />
+                          <input type="hidden" name="done" value={(!item.done).toString()} />
+                          <button
+                            type="submit"
+                            aria-label={item.done ? "Desmarcar plano" : "Marcar plano como feito"}
+                            className={`flex h-5 w-5 items-center justify-center rounded border text-xs ${
+                              item.done
+                                ? "border-green-600 bg-green-600 text-white"
+                                : "border-neutral-300 bg-white"
+                            }`}
+                          >
+                            {item.done ? "✓" : ""}
+                          </button>
+                        </form>
+                      </td>
                       <td className="px-3 py-2 text-neutral-400">
                         {index + 1}
                       </td>
-                      <td className="px-3 py-2 text-neutral-900">
+                      <td className={`px-3 py-2 ${item.done ? "line-through" : "text-neutral-900"}`}>
                         {item.description}
                       </td>
                       <td className="px-3 py-2 text-neutral-600">
