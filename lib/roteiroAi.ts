@@ -1,0 +1,71 @@
+import "server-only";
+import { rateLimit } from "@/lib/rateLimit";
+import { getCurrentSession } from "@/lib/session";
+
+/**
+ * Chamada de IA do gerador de roteiros. DeepSeek, Gemini e Grok expõem o
+ * mesmo `/chat/completions` da OpenAI, então trocar de provedor é trocar as
+ * envs ROTEIROS_AI_* — sem mexer em código.
+ *
+ * ponytail: usa `response_format: json_schema`. OpenAI, Gemini e Grok aceitam;
+ * DeepSeek só aceita `json_object` — ao trocar pra ele, mandar o schema no
+ * prompt e pedir `{ type: "json_object" }`.
+ */
+export const MODELO_ROTEIRO = process.env.ROTEIROS_AI_MODEL || "gpt-4o";
+
+async function completar(body: Record<string, unknown>): Promise<string> {
+  const apiKey = process.env.ROTEIROS_AI_KEY;
+  if (!apiKey) throw new Error("ROTEIROS_AI_KEY não configurada no servidor.");
+  const baseUrl = process.env.ROTEIROS_AI_BASE_URL || "https://api.openai.com/v1";
+
+  // Toda chamada à IA passa por aqui e cada uma custa. 30 por hora por pessoa
+  // cobre o uso normal e corta um login vazado ou um loop rodando à toa.
+  const session = await getCurrentSession();
+  if (!(await rateLimit(`ia:${session?.userId ?? "sem-sessao"}`, 30, 60 * 60))) {
+    throw new Error("Limite de 30 gerações por hora atingido. Tenta de novo mais tarde.");
+  }
+
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erro na API de IA (${response.status}): ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Resposta vazia da API de IA.");
+  return content;
+}
+
+export async function chatJson<T>({
+  model,
+  system,
+  user,
+  schema,
+  temperature,
+}: {
+  model: string;
+  system: string;
+  user: string;
+  schema: object;
+  temperature: number;
+}): Promise<T> {
+  const content = await completar({
+    model,
+    messages: [
+      { role: "system", content: system },
+      // Teto pro texto que vem da tela: o chat já corta o dele, aqui cobre o resto.
+      { role: "user", content: user.slice(0, 20000) },
+    ],
+    response_format: { type: "json_schema", json_schema: schema },
+    temperature,
+  });
+  return JSON.parse(content) as T;
+}

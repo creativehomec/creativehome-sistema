@@ -8,8 +8,10 @@ import {
   toggleVisualReferenceSelectedAction,
   updateSceneAction,
   updateVideoAction,
+  updateVideoNotasAction,
 } from "@/app/admin/guias/[id]/actions";
 import { Accordion } from "@/components/Accordion";
+import { ColarRoteiro } from "@/components/admin/ColarRoteiro";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { LightboxImage } from "@/components/LightboxImage";
 import type { Scene, VideoWithScenes, VisualReference } from "@/lib/guides";
@@ -176,6 +178,35 @@ function SceneCard({
           rows={2}
           className="mt-2 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
         />
+        {/* Opcional: fechado nas cenas que não usam, aberto nas que já têm. */}
+        <details
+          className="mt-2 rounded-md border border-neutral-200 bg-white"
+          open={scene.hooks_alternativos.length > 0 || scene.ctas_alternativos.length > 0}
+        >
+          <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-neutral-600">
+            Hooks e CTAs alternativos
+          </summary>
+          <div className="space-y-2 border-t border-neutral-200 p-3">
+            <label className="block text-xs text-neutral-500">
+              Hooks alternativos (um por linha)
+              <textarea
+                name="hooks_alternativos"
+                defaultValue={scene.hooks_alternativos.join("\n")}
+                rows={3}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none"
+              />
+            </label>
+            <label className="block text-xs text-neutral-500">
+              CTAs alternativos (um por linha)
+              <textarea
+                name="ctas_alternativos"
+                defaultValue={scene.ctas_alternativos.join("\n")}
+                rows={3}
+                className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none"
+              />
+            </label>
+          </div>
+        </details>
         <button
           type="submit"
           className="mt-2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
@@ -268,6 +299,31 @@ function VideoCard({
           </p>
         ) : null}
       </div>
+
+      {/* Uma nota pro vídeo inteiro, sempre depois da última cena. */}
+      <form
+        action={updateVideoNotasAction}
+        className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 p-3"
+      >
+        <input type="hidden" name="id" value={video.id} />
+        <input type="hidden" name="guide_id" value={guideId} />
+        <label className="block text-xs font-medium text-neutral-600">
+          Notas de produção do vídeo
+          <textarea
+            name="notas_producao"
+            defaultValue={video.notas_producao}
+            placeholder="O que a equipe precisa captar, cuidar ou lembrar neste vídeo..."
+            rows={3}
+            className="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm font-normal text-neutral-900 focus:border-neutral-500 focus:outline-none"
+          />
+        </label>
+        <button
+          type="submit"
+          className="mt-2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+        >
+          Salvar notas
+        </button>
+      </form>
 
       <form
         action={addSceneAction}
@@ -374,6 +430,10 @@ export function VideosSection({
             Salvar vídeo {nextVideoNumber} e adicionar o próximo
           </button>
         </form>
+
+        <div className="mt-3 border-t border-neutral-200 pt-3">
+          <ColarRoteiro guideId={guideId} />
+        </div>
 
         {videos.length > 0 ? (
           <div className="mt-3 border-t border-neutral-200 pt-3">
