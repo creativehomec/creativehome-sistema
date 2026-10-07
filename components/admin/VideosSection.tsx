@@ -359,7 +359,7 @@ function VideoCard({
           />
           <input
             name="caption"
-            placeholder="Legenda (opcional)"
+            placeholder="Legenda da imagem (só vale com imagem)"
             className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs focus:border-neutral-500 focus:outline-none"
           />
         </div>

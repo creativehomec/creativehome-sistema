@@ -39,8 +39,26 @@ const TABELAS_AO_VIVO = [
 // acontece só atrapalha, então o ciclo espera o campo perder o foco.
 const TYPING_SELECTOR = "input, textarea, select, [contenteditable='true']";
 
+// Algum formulário com texto digitado e ainda não enviado: revalidar por cima
+// pode refazer o formulário e levar o texto embora, mesmo com o campo sem foco
+// (clicar fora, ir copiar o roteiro em outra janela e voltar).
+const formsSujos = new Set<HTMLFormElement>();
+if (typeof document !== "undefined") {
+  document.addEventListener("input", (e) => {
+    const form = e.target instanceof HTMLElement ? e.target.closest("form") : null;
+    if (form) formsSujos.add(form);
+  });
+  document.addEventListener("submit", (e) => {
+    if (e.target instanceof HTMLFormElement) formsSujos.delete(e.target);
+  });
+}
+
 function isBusy() {
   if (document.visibilityState !== "visible") return true;
+  for (const form of formsSujos) {
+    if (form.isConnected) return true;
+    formsSujos.delete(form);
+  }
   // Qualquer modal aberto (drawer de tarefa, de card, confirmações) conta como
   // interação em curso — todos passam pelo DialogContent de components/ui.
   if (

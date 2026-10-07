@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -59,6 +59,61 @@ function Digit({ initial }: { initial: number }) {
 }
 
 /**
+ * Fundo de uma marca: foto, vídeo de arquivo, YouTube ou Vimeo, sempre mudo.
+ *
+ * O iframe do YouTube é 16:9 e não tem object-fit, então é esticado até a maior
+ * das duas medidas e centralizado; o excesso é cortado pelo overflow da camada.
+ * Vídeo só é montado quando `live` (seção na tela e camada ativa ou a anterior,
+ * que ainda está sendo coberta pela varredura): com várias marcas, tocar tudo ao mesmo tempo
+ * pesaria a página inteira.
+ */
+function BackgroundMedia({ url, live }: { url: string; live: boolean }) {
+  const yt = url.match(
+    /(?:youtu\.be\/|youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtube\.com\/shorts\/)([\w-]+)/
+  );
+  const vm = url.match(/vimeo\.com\/(\d+)/);
+  const isFile = /\.(mp4|webm|mov|m4v)($|\?)/i.test(url);
+
+  if (yt || vm || isFile) {
+    if (!live) return null;
+    if (isFile) {
+      return (
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          src={url}
+          autoPlay
+          muted
+          loop
+          playsInline
+        />
+      );
+    }
+    const src = yt
+      ? `https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1&loop=1&playlist=${yt[1]}&controls=0&playsinline=1&modestbranding=1&rel=0&disablekb=1&iv_load_policy=3`
+      : `https://player.vimeo.com/video/${vm![1]}?autoplay=1&muted=1&loop=1&background=1`;
+    return (
+      <iframe
+        className="pointer-events-none absolute left-1/2 top-1/2 aspect-video min-h-full min-w-full -translate-x-1/2 -translate-y-1/2"
+        src={src}
+        frameBorder={0}
+        allow="autoplay; encrypted-media"
+        title=""
+        aria-hidden
+        tabIndex={-1}
+      />
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt=""
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  );
+}
+
+/**
  * Em desenvolvimento, marca sem foto ganha uma foto aleatória para dar para
  * testar o efeito. Em produção nunca: o cliente veria uma foto que ninguém
  * escolheu.
@@ -72,7 +127,26 @@ function photoOf(item: Item, i: number): string {
 
 export function IndexWipe({ items }: { items: Item[] }) {
   const [active, setActive] = useState(0);
+  // Camadas com vídeo montado: a ativa e a anterior (ainda sendo coberta).
+  const [history, setHistory] = useState([0]);
+  const choose = (i: number) => {
+    setActive(i);
+    setHistory((h) => [i, ...h.filter((x) => x !== i)].slice(0, 2));
+  };
   const root = useRef<HTMLDivElement>(null);
+  // O vídeo só toca com a seção na tela: fora dela o iframe nem é criado, então
+  // a página não baixa nem decodifica vídeo que ninguém está vendo.
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold: 0.2 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const prev = useRef(0);
   const z = useRef(1);
 
@@ -122,7 +196,7 @@ export function IndexWipe({ items }: { items: Item[] }) {
               trigger: row,
               start: "top 60%",
               end: "bottom 60%",
-              onToggle: (self) => self.isActive && setActive(i),
+              onToggle: (self) => self.isActive && choose(i),
             });
           });
       });
@@ -153,10 +227,9 @@ export function IndexWipe({ items }: { items: Item[] }) {
         >
           {photoOf(item, i) ? (
             <>
-              <img
-                src={photoOf(item, i)}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
+              <BackgroundMedia
+                url={photoOf(item, i)}
+                live={inView && history.includes(i)}
               />
               {/* Véu para o nome em creme ler sobre qualquer foto. */}
               <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-black/10" />
@@ -177,11 +250,11 @@ export function IndexWipe({ items }: { items: Item[] }) {
           <li
             key={`${item.url}-${i}`}
             data-row
-            onPointerEnter={(e) => e.pointerType === "mouse" && setActive(i)}
+            onPointerEnter={(e) => e.pointerType === "mouse" && choose(i)}
           >
             <button
               type="button"
-              onClick={() => setActive(i)}
+              onClick={() => choose(i)}
               className={`block text-left transition-opacity duration-300 ${
                 i === active ? "opacity-100" : "opacity-35"
               }`}

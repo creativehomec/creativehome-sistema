@@ -337,7 +337,7 @@ export function SectionFields({
             />
           </Field>
           {data.logos.length > 0 ? (
-            <Field label="Foto de fundo de cada marca (lista animada)">
+            <Field label="Foto ou vídeo de fundo de cada marca (lista animada)">
               <div className="space-y-2">
                 {data.logos.map((logo, i) => (
                   <div key={`${logo.url}-${i}`} className="space-y-1.5">
@@ -354,7 +354,7 @@ export function SectionFields({
                         })
                       }
                       className={FIELD_CLASS}
-                      placeholder="Link da foto (opcional)"
+                      placeholder="Link da foto, .mp4, YouTube ou Vimeo (opcional)"
                     />
                     <UploadButton
                       budgetId={budgetId}
