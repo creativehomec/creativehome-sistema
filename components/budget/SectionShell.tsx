@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Reveal } from "@/components/Reveal";
+import { FadeUp } from "@/components/budget/motion/FadeUp";
+import { SplitTitle } from "@/components/budget/motion/SplitTitle";
 import type { BlockTone } from "@/lib/budgetSections";
 import { brandDisplayFontFamily } from "@/lib/brand";
 
@@ -11,14 +12,14 @@ import { brandDisplayFontFamily } from "@/lib/brand";
  * página com um desenho próprio.
  */
 export function SectionHeading({
-  number,
   eyebrow,
   title,
   subtitle,
   tone,
   className = "",
 }: {
-  number: string;
+  /** Não é mais exibido (o número virou rótulo genérico); mantido para os chamadores. */
+  number?: string;
   eyebrow: string;
   title: string;
   subtitle?: string;
@@ -28,28 +29,24 @@ export function SectionHeading({
   if (!eyebrow && !title && !subtitle) return null;
 
   return (
-    <Reveal className={className}>
+    <FadeUp className={className}>
       {eyebrow ? (
-        <div className="mb-6 flex items-center gap-4">
-          <span className="text-xs font-bold tabular-nums">{number}</span>
-          <span className={`h-px w-10 ${tone.isDark ? "bg-[var(--brand-cream)]/40" : "bg-[var(--brand-ink)]/30"}`} />
-          <span className={`text-xs font-medium uppercase tracking-[0.2em] ${tone.textMuted}`}>
-            {eyebrow}
-          </span>
-        </div>
+        <p className={`mb-6 text-xs font-medium uppercase tracking-[0.25em] ${tone.textMuted}`}>
+          {eyebrow}
+        </p>
       ) : null}
       {title ? (
-        <h2
+        <SplitTitle
           style={{ fontFamily: brandDisplayFontFamily }}
-          className="max-w-3xl text-3xl leading-[1.1] tracking-wide sm:text-5xl"
+          className="max-w-5xl text-4xl leading-[1.05] tracking-wide sm:text-6xl"
         >
           {title}
-        </h2>
+        </SplitTitle>
       ) : null}
       {subtitle ? (
         <p className={`mt-4 max-w-xl text-base ${tone.textMuted}`}>{subtitle}</p>
       ) : null}
-    </Reveal>
+    </FadeUp>
   );
 }
 
@@ -66,7 +63,7 @@ export function SectionBlock({
   return (
     <section
       id={id}
-      className={`px-4 py-20 sm:px-8 sm:py-24 ${tone.bg} ${tone.text}`}
+      className={`px-4 py-28 sm:px-8 md:py-44 ${tone.bg} ${tone.text}`}
     >
       <div className="mx-auto w-full max-w-5xl">{children}</div>
     </section>

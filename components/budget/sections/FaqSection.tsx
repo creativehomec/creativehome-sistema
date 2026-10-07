@@ -1,5 +1,5 @@
 import { Accordion } from "@/components/Accordion";
-import { Reveal } from "@/components/Reveal";
+import { FadeUp } from "@/components/budget/motion/FadeUp";
 import { SectionBlock, SectionHeading } from "@/components/budget/SectionShell";
 import type { BlockTone, SectionData } from "@/lib/budgetSections";
 
@@ -22,7 +22,7 @@ export function FaqSection({
         tone={tone}
         className="mb-10"
       />
-      <Reveal>
+      <FadeUp>
         {data.items.map((item, index) => (
           <Accordion
             key={`${item.question}-${index}`}
@@ -44,7 +44,7 @@ export function FaqSection({
             </p>
           </Accordion>
         ))}
-      </Reveal>
+      </FadeUp>
     </SectionBlock>
   );
 }

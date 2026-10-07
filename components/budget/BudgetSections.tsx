@@ -1,5 +1,8 @@
+import { BudgetMenu } from "@/components/budget/motion/BudgetMenu";
 import {
   blockTone,
+  type BlockTone,
+  SECTION_LABELS,
   isNumbered,
   sectionNumber,
   visibleSections,
@@ -30,9 +33,12 @@ import { FooterSection } from "@/components/budget/sections/FooterSection";
 export function BudgetSections({
   sections,
   clientName = "",
+  menu = false,
 }: {
   sections: BudgetSection[];
   clientName?: string;
+  /** Menu fixo de navegação: só na página pública, nunca no preview do editor. */
+  menu?: boolean;
 }) {
   const visible = visibleSections(sections);
   const hasPricing = visible.some((section) => section.kind === "pricing");
@@ -46,14 +52,39 @@ export function BudgetSections({
     number: sectionNumber(visible.slice(0, index).filter(isNumbered).length),
   }));
 
+  const menuItems = blocks
+    .filter(({ section }) => isNumbered(section))
+    .map(({ section }) => ({
+      id: `s-${section.kind}`,
+      label:
+        ("eyebrow" in section.data && section.data.eyebrow) ||
+        SECTION_LABELS[section.kind],
+    }));
+
   return (
     <>
-      {blocks.map(({ section, tone, number }) => {
+      {menu ? <BudgetMenu items={menuItems} /> : null}
+      {blocks.map(({ section, tone, number }) => (
+        // O id é o destino do menu; o wrapper não tem estilo, só ancora.
+        <div key={section.kind} id={`s-${section.kind}`}>
+          {renderBlock(section, tone, number, hasPricing, clientName)}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function renderBlock(
+  section: BudgetSection,
+  tone: BlockTone,
+  number: string,
+  hasPricing: boolean,
+  clientName: string
+) {
         if (section.kind === "cover") {
           return (
             <CoverSection
-              key={section.kind}
-              data={section.data}
+                            data={section.data}
               tone={tone}
               hasPricing={hasPricing}
             />
@@ -63,8 +94,7 @@ export function BudgetSections({
         if (section.kind === "footer") {
           return (
             <FooterSection
-              key={section.kind}
-              data={section.data}
+                            data={section.data}
               tone={tone}
               clientName={clientName}
             />
@@ -75,8 +105,7 @@ export function BudgetSections({
           case "about":
             return (
               <AboutSection
-                key={section.kind}
-                data={section.data}
+                                data={section.data}
                 tone={tone}
                 number={number}
               />
@@ -84,8 +113,7 @@ export function BudgetSections({
           case "portfolio":
             return (
               <PortfolioSection
-                key={section.kind}
-                data={section.data}
+                                data={section.data}
                 tone={tone}
                 number={number}
               />
@@ -93,8 +121,7 @@ export function BudgetSections({
           case "logos":
             return (
               <LogosSection
-                key={section.kind}
-                data={section.data}
+                                data={section.data}
                 tone={tone}
                 number={number}
               />
@@ -102,8 +129,7 @@ export function BudgetSections({
           case "pricing":
             return (
               <PricingSection
-                key={section.kind}
-                data={section.data}
+                                data={section.data}
                 tone={tone}
                 number={number}
               />
@@ -111,8 +137,7 @@ export function BudgetSections({
           case "faq":
             return (
               <FaqSection
-                key={section.kind}
-                data={section.data}
+                                data={section.data}
                 tone={tone}
                 number={number}
               />
@@ -122,14 +147,10 @@ export function BudgetSections({
             // forma, um componente só.
             return (
               <ListSection
-                key={section.kind}
-                data={section.data}
+                                data={section.data}
                 tone={tone}
                 number={number}
               />
             );
         }
-      })}
-    </>
-  );
 }

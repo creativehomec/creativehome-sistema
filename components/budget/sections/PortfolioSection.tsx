@@ -1,4 +1,4 @@
-import { RevealStagger, RevealItem } from "@/components/Reveal";
+import { ClipReveal } from "@/components/budget/motion/ClipReveal";
 import { LightboxImage, type GalleryItem } from "@/components/LightboxImage";
 import { SectionBlock, SectionHeading } from "@/components/budget/SectionShell";
 import type { BlockTone, SectionData } from "@/lib/budgetSections";
@@ -27,65 +27,68 @@ export function PortfolioSection({
 
   return (
     <SectionBlock tone={tone}>
-      <SectionHeading
-        number={number}
-        eyebrow={data.eyebrow}
-        title={data.title}
-        subtitle={data.subtitle}
-        tone={tone}
-        className="mb-12"
-      />
-      <RevealStagger className="grid gap-5 sm:grid-cols-3">
-        {data.projects.map((project, index) => {
-          const ratio =
-            project.orientation === "vertical" ? "aspect-[9/16]" : "aspect-video";
-          const imageIndex = images.indexOf(project);
+      {/* Mobile: título e cards empilhados. Do lg em diante o título fica
+          preso à esquerda enquanto os cards rolam à direita. */}
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] lg:gap-16">
+        <div className="lg:sticky lg:top-24 lg:self-start">
+          <SectionHeading
+            number={number}
+            eyebrow={data.eyebrow}
+            title={data.title}
+            subtitle={data.subtitle}
+            tone={tone}
+          />
+        </div>
+        <div className="flex flex-col gap-14">
+          {data.projects.map((project, index) => {
+            const ratio =
+              project.orientation === "vertical"
+                ? "aspect-[9/16] max-w-sm"
+                : "aspect-video";
+            const imageIndex = images.indexOf(project);
 
-          return (
-            <RevealItem key={`${project.url}-${index}`}>
-              <div
-                className={`relative overflow-hidden border ${ratio} ${
-                  tone.isDark
-                    ? "border-[var(--brand-cream)]/20"
-                    : "border-[var(--brand-ink)]/15"
-                }`}
-              >
-                {project.mediaType === "video" ? (
-                  <video
-                    className="h-full w-full object-cover"
-                    src={project.url}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                  />
-                ) : (
-                  <LightboxImage
-                    id={`${project.url}-${index}`}
-                    src={project.url}
-                    alt={project.name || "Projeto"}
-                    sourceUrl={null}
-                    className="h-full w-full object-cover"
-                    gallery={gallery}
-                    index={imageIndex}
-                  />
-                )}
+            return (
+              <div key={`${project.url}-${index}`} className="group">
+                <ClipReveal className={ratio}>
+                  {project.mediaType === "video" ? (
+                    <video
+                      className="h-full w-full object-cover"
+                      src={project.url}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <LightboxImage
+                      id={`${project.url}-${index}`}
+                      src={project.url}
+                      alt={project.name || "Projeto"}
+                      sourceUrl={null}
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                      gallery={gallery}
+                      index={imageIndex}
+                    />
+                  )}
+                </ClipReveal>
+                <div className="mt-4 flex items-baseline justify-between gap-3">
+                  <p className="flex items-baseline gap-2 text-lg font-bold">
+                    <span className={`text-xs tabular-nums ${tone.textMuted}`}>
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    {project.name || "Sem título"}
+                  </p>
+                  {project.tag ? (
+                    <span className="rounded-full border border-current/30 px-3 py-1 text-xs uppercase tracking-widest">
+                      {project.tag}
+                    </span>
+                  ) : null}
+                </div>
               </div>
-              <div className="mt-3 flex items-baseline justify-between gap-3">
-                <p className="flex items-baseline gap-2 text-sm font-bold">
-                  <span className={`text-xs tabular-nums ${tone.textMuted}`}>
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  {project.name || "Sem título"}
-                </p>
-                {project.tag ? (
-                  <span className={`text-xs ${tone.textMuted}`}>{project.tag}</span>
-                ) : null}
-              </div>
-            </RevealItem>
-          );
-        })}
-      </RevealStagger>
+            );
+          })}
+        </div>
+      </div>
     </SectionBlock>
   );
 }

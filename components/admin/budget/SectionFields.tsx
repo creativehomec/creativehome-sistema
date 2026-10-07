@@ -88,6 +88,15 @@ export function SectionFields({
             </div>
           </Field>
 
+          <Field label="Reel completo (botão Play reel)">
+            <input
+              value={data.reelUrl ?? ""}
+              onChange={(e) => set({ reelUrl: e.target.value })}
+              className={FIELD_CLASS}
+              placeholder="Link do YouTube, Vimeo ou .mp4"
+            />
+          </Field>
+
           <Field label={`Desfoque do fundo — ${data.blur}px`}>
             <input
               type="range"
@@ -327,6 +336,42 @@ export function SectionFields({
               }
             />
           </Field>
+          {data.logos.length > 0 ? (
+            <Field label="Foto de fundo de cada marca (lista animada)">
+              <div className="space-y-2">
+                {data.logos.map((logo, i) => (
+                  <div key={`${logo.url}-${i}`} className="space-y-1.5">
+                    <p className="text-xs font-medium text-neutral-700">
+                      {logo.name || `Marca ${i + 1}`}
+                    </p>
+                    <input
+                      value={logo.photo ?? ""}
+                      onChange={(e) =>
+                        set({
+                          logos: data.logos.map((l, j) =>
+                            j === i ? { ...l, photo: e.target.value } : l
+                          ),
+                        })
+                      }
+                      className={FIELD_CLASS}
+                      placeholder="Link da foto (opcional)"
+                    />
+                    <UploadButton
+                      budgetId={budgetId}
+                      onUploaded={(url) =>
+                        set({
+                          logos: data.logos.map((l, j) =>
+                            j === i ? { ...l, photo: url } : l
+                          ),
+                        })
+                      }
+                      label="Enviar foto do computador"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Field>
+          ) : null}
           <p className="text-[11px] leading-relaxed text-neutral-400">
             A biblioteca é a mesma em todas as propostas. Escolha aqui só as
             marcas que conversam com este cliente — sem nenhuma marcada, a seção

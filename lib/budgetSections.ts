@@ -48,9 +48,23 @@ export interface PortfolioProject {
   orientation: Orientation;
 }
 
+/** Quatro empresas de exemplo: nascem num orçamento novo e preenchem a lista em desenvolvimento. */
+export const PLACEHOLDER_LOGOS: ClientLogo[] = [
+  "Aurora Motors",
+  "Vento Esportes",
+  "Sabor & Cia",
+  "Horizonte Viagens",
+].map((name, i) => ({
+  name,
+  url: `/placeholders/empresa-${i + 1}.svg`,
+  photo: `https://picsum.photos/seed/creative-empresa-${i + 1}/1600/900`,
+}));
+
 export interface ClientLogo {
   name: string;
   url: string;
+  /** Foto de fundo do nome na lista animada; sem ela usa o próprio logo. */
+  photo?: string;
 }
 
 export interface PricingPackage {
@@ -75,6 +89,8 @@ export interface SectionData {
     cta: string;
     /** Imagem ou vídeo de fundo: arquivo, YouTube ou Vimeo. */
     mediaUrl: string;
+    /** Reel completo (YouTube, Vimeo ou arquivo), aberto pelo botão "Play reel". */
+    reelUrl: string;
     /** Desfoque da mídia de fundo, em pixels. 0 = sem desfoque. */
     blur: number;
   };
@@ -218,6 +234,7 @@ function parseData<K extends SectionKind>(
         // videoUrl é o nome antigo, de quando a capa só aceitava vídeo: as
         // propostas gravadas antes ainda têm a chave, e continuam valendo.
         mediaUrl: str(d.mediaUrl, str(d.videoUrl)).trim(),
+        reelUrl: str(d.reelUrl).trim(),
         blur: clamp(num(d.blur), 0, MAX_BLUR),
       } as SectionData[K];
 
@@ -256,7 +273,11 @@ function parseData<K extends SectionKind>(
         logos: arr(d.logos)
           .map((item) => {
             const l = obj(item);
-            return { name: str(l.name), url: str(l.url).trim() };
+            return {
+              name: str(l.name),
+              url: str(l.url).trim(),
+              photo: str(l.photo).trim(),
+            };
           })
           // Um logo sem imagem não é um logo — some da lista em vez de virar
           // um buraco na faixa.
@@ -433,6 +454,7 @@ export function secoesPadrao(): BudgetSection[] {
           "Uma direção audiovisual desenhada para transformar atenção em percepção de valor.",
         cta: "Conhecer a proposta",
         mediaUrl: "",
+        reelUrl: "",
         blur: 0,
       },
     },
@@ -471,7 +493,8 @@ export function secoesPadrao(): BudgetSection[] {
       data: {
         eyebrow: "QUEM JÁ CONFIA",
         title: "Marcas que já colocamos em movimento",
-        logos: [],
+        // Marcas de exemplo (nome, logo e foto): trocar pelas reais no editor.
+        logos: PLACEHOLDER_LOGOS,
       },
     },
     {

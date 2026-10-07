@@ -1,4 +1,4 @@
-import { RevealStagger, RevealItem } from "@/components/Reveal";
+import { StaggerIn } from "@/components/budget/motion/StaggerIn";
 import { SectionBlock, SectionHeading } from "@/components/budget/SectionShell";
 import { PACKAGE_WHATSAPP_URL } from "@/lib/budgetCalc";
 import type { BlockTone, SectionData } from "@/lib/budgetSections";
@@ -36,11 +36,11 @@ export function PricingSection({
         tone={tone}
         className="mb-12"
       />
-      <RevealStagger className="grid gap-5 sm:grid-cols-3">
+      <StaggerIn className="grid gap-5 lg:grid-cols-3">
         {data.packages.map((pkg, index) => (
-          <RevealItem
+          <div
             key={`${pkg.name}-${index}`}
-            className={`relative flex flex-col bg-[var(--brand-cream)] p-7 text-[var(--brand-ink)] ${
+            className={`relative flex flex-col rounded-[2rem] bg-[var(--brand-cream)] p-7 text-[var(--brand-ink)] ${
               pkg.featured
                 ? "border-[1.5px] border-[var(--brand-olive)]"
                 : "border border-[var(--brand-taupe)]"
@@ -51,7 +51,7 @@ export function PricingSection({
                 Opção {String(index + 1).padStart(2, "0")}
               </span>
               {pkg.featured ? (
-                <span className="bg-[var(--brand-ink)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--brand-cream)]">
+                <span className="rounded-full bg-[var(--brand-ink)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--brand-cream)]">
                   Recomendado
                 </span>
               ) : null}
@@ -90,7 +90,7 @@ export function PricingSection({
               href={PACKAGE_WHATSAPP_URL}
               target="_blank"
               rel="noreferrer"
-              className={`block py-3 text-center text-xs font-bold uppercase tracking-widest ${
+              className={`block rounded-full py-3.5 text-center text-xs font-bold uppercase tracking-widest ${
                 pkg.featured
                   ? "bg-[var(--brand-ink)] text-[var(--brand-cream)]"
                   : "border border-[var(--brand-ink)]/40 text-[var(--brand-ink)] hover:bg-[var(--brand-taupe)]/30"
@@ -98,9 +98,9 @@ export function PricingSection({
             >
               {data.cta || `Escolher ${pkg.name}`}
             </a>
-          </RevealItem>
+          </div>
         ))}
-      </RevealStagger>
+      </StaggerIn>
     </SectionBlock>
   );
 }

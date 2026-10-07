@@ -1,7 +1,8 @@
 import { BrandLogo } from "@/components/BrandLogo";
 import { ScrollHint } from "@/components/ScrollHint";
 import type { BlockTone, SectionData } from "@/lib/budgetSections";
-import { brandDisplayFontFamily } from "@/lib/brand";
+import { ReelButton } from "@/components/budget/motion/ReelButton";
+import { CoverTitle } from "@/components/budget/motion/CoverTitle";
 
 /**
  * A mídia de fundo da capa: imagem, vídeo de arquivo, YouTube ou Vimeo.
@@ -20,7 +21,7 @@ function HeroBackground({ url, blur }: { url: string; blur: number }) {
   if (/\.(mp4|webm|mov|m4v)($|\?)/i.test(trimmed)) {
     return (
       <video
-        className="absolute inset-0 h-full w-full object-cover opacity-40"
+        className="absolute inset-0 h-full w-full object-cover"
         style={desfoque}
         autoPlay
         muted
@@ -38,7 +39,7 @@ function HeroBackground({ url, blur }: { url: string; blur: number }) {
 
   let embed = "";
   if (yt) {
-    embed = `https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1&loop=1&playlist=${yt[1]}&controls=0&showinfo=0`;
+    embed = `https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1&loop=1&playlist=${yt[1]}&controls=0&showinfo=0&playsinline=1&modestbranding=1&rel=0&disablekb=1&iv_load_policy=3`;
   } else if (vm) {
     embed = `https://player.vimeo.com/video/${vm[1]}?autoplay=1&muted=1&loop=1&background=1`;
   }
@@ -56,18 +57,21 @@ function HeroBackground({ url, blur }: { url: string; blur: number }) {
         alt=""
         aria-hidden
         style={desfoque}
-        className="absolute inset-0 h-full w-full object-cover opacity-40"
+        className="absolute inset-0 h-full w-full object-cover"
       />
     );
   }
 
+  // O iframe do YouTube é sempre 16:9 e não tem object-fit. Para cobrir o
+  // quadro ele é esticado até a maior das duas medidas (aspect-video com
+  // min-w/min-h) e centralizado; o que passa da tela é cortado pelo overflow.
   return (
     <iframe
-      className="absolute inset-0 h-full w-full opacity-40"
+      className="pointer-events-none absolute left-1/2 top-1/2 aspect-video min-h-full min-w-full -translate-x-1/2 -translate-y-1/2"
       style={desfoque}
       src={embed}
       frameBorder={0}
-      allow="autoplay"
+      allow="autoplay; encrypted-media"
       title="Vídeo de fundo"
     />
   );
@@ -99,46 +103,41 @@ export function CoverSection({
       className={`relative flex min-h-[var(--budget-vh,100svh)] flex-col overflow-hidden px-4 py-8 sm:px-8 sm:py-10 ${tone.bg} ${tone.text}`}
     >
       <HeroBackground url={midia} blur={data.blur ?? 0} />
-      {midia ? <div className="absolute inset-0 bg-black/50" /> : null}
+      {midia ? <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/40" /> : null}
 
       <div className="relative mx-auto w-full max-w-5xl">
         <BrandLogo className="h-8 w-auto" />
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center">
+      <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center text-center">
         {data.eyebrow ? (
-          <p
-            className={`mb-6 inline-flex w-fit border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.2em] ${
-              tone.isDark
-                ? "border-[var(--brand-cream)]/30"
-                : "border-[var(--brand-ink)]/25"
-            }`}
-          >
+          <p className="mb-6 text-xs font-bold uppercase tracking-[0.3em] opacity-80">
             {data.eyebrow}
           </p>
         ) : null}
 
-        <h1
-          style={{ fontFamily: brandDisplayFontFamily }}
-          className="mb-6 text-5xl leading-[0.95] tracking-wide sm:text-8xl"
-        >
-          {data.title}
-        </h1>
+        <CoverTitle>{data.title}</CoverTitle>
 
         {data.subtitle ? (
-          <p className={`mb-10 max-w-lg text-base leading-relaxed ${tone.textMuted}`}>
+          <p className={`mb-10 max-w-xl text-base leading-relaxed ${tone.textMuted}`}>
             {data.subtitle}
           </p>
         ) : null}
 
-        {hasPricing && data.cta ? (
-          <a
-            href="#pacotes"
-            className="inline-block w-fit bg-[var(--brand-ink)] px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-[var(--brand-cream)]"
-          >
-            {data.cta} ↓
-          </a>
-        ) : null}
+        <div className="flex flex-wrap justify-center gap-3">
+          {hasPricing && data.cta ? (
+            <a
+              href="#pacotes"
+              className="inline-block w-fit rounded-full bg-[var(--brand-ink)] px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-[var(--brand-cream)]"
+            >
+              {data.cta} ↓
+            </a>
+          ) : null}
+          <ReelButton
+            url={(data.reelUrl ?? "").trim()}
+            className="inline-block w-fit rounded-full border border-current/50 px-7 py-3.5 text-sm font-bold uppercase tracking-widest"
+          />
+        </div>
       </div>
 
       <ScrollHint className={tone.text} />

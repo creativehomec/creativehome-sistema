@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getBudgetBySlugWithSections } from "@/lib/budgets";
+import { SmoothScroll } from "@/components/budget/motion/SmoothScroll";
 import { BudgetSections } from "@/components/budget/BudgetSections";
 
 export const dynamic = "force-dynamic";
@@ -34,11 +35,13 @@ export default async function PublicBudgetPage({
   }
 
   return (
-    <div className="min-h-svh">
+    <main className="min-h-svh w-full max-w-full overflow-x-clip">
+      <SmoothScroll />
       <BudgetSections
         sections={budget.sections}
         clientName={budget.client_name}
+        menu
       />
-    </div>
+    </main>
   );
 }

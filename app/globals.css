@@ -31,11 +31,11 @@
   --brand-beige, nunca cinza.
 */
 :root {
-  --brand-olive: #838059;
-  --brand-cream: #fff6e3;
-  --brand-taupe: #cdc7b8;
-  --brand-beige: #fff6e3;
-  --brand-ink: #2f3b1e;
+  --brand-olive: #a24f34;
+  --brand-cream: #fbf1e6;
+  --brand-taupe: #dcc5b0;
+  --brand-beige: #fbf1e6;
+  --brand-ink: #3a1f14;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -710,4 +710,24 @@ a {
   transform-origin: var(--alca-ox, 50%) var(--alca-oy, 50%);
   transform: scale(calc(1 / var(--zoom, 1)))
     translate(var(--alca-x, 0), var(--alca-y, 0));
+}
+
+
+/* Faixa de logos da proposta: a trilha tem o conteúdo duplicado, então
+   andar -50% fecha o loop sem salto. */
+@keyframes budget-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Entrada da capa: fade curto ao carregar, sem scroll. */
+@keyframes budget-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.budget-fade-in {
+  animation: budget-fade-in 0.9s ease-out both;
 }
