@@ -233,23 +233,26 @@ export default async function PublicGuidePage({
                               </button>
                             </form>
                           </div>
-                          <p className="whitespace-pre-wrap text-lg font-medium leading-snug text-neutral-900">
+                          <p className="whitespace-pre-wrap text-xl font-semibold leading-snug text-neutral-900 sm:text-2xl">
                             <RichText text={scene.script || "—"} />
                           </p>
 
                           {scene.description ? (
-                            <div
-                              className={`mt-3 rounded-md p-3 ${
+                            <details
+                              className={`group mt-4 rounded-md ${
                                 scene.recorded ? "bg-green-100" : "bg-neutral-200"
                               }`}
                             >
-                              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide text-neutral-500 [&::-webkit-details-marker]:hidden">
                                 Descrição de cena
-                              </p>
-                              <p className="whitespace-pre-wrap text-sm text-neutral-700">
+                                <span className="transition-transform group-open:rotate-180" aria-hidden>
+                                  ▾
+                                </span>
+                              </summary>
+                              <p className="whitespace-pre-wrap px-3 pb-3 text-sm text-neutral-700">
                                 <RichText text={scene.description} />
                               </p>
-                            </div>
+                            </details>
                           ) : null}
 
                           <AlternativasCena scene={scene} />
