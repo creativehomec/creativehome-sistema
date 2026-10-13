@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   DailyTodo,
@@ -41,7 +42,10 @@ export async function listDailyTodos(): Promise<{
   todos: DailyTodoView[];
   users: TodoUser[];
 }> {
-  await purgeExpired();
+  // Depois da resposta: a limpeza era uma ida ao banco em série na frente de
+  // toda abertura do Painel. Quem passou da retenção aparece até a próxima
+  // abertura, o que não faz diferença pra uma tarefa que já estava concluída.
+  after(() => purgeExpired().catch(() => {}));
 
   const supabase = getSupabaseServerClient();
   const [todosResult, usersResult, assigneesResult, checklistResult] =

@@ -83,75 +83,14 @@ function normalizeText(value: unknown): string | null {
 export async function getBacklogBoard(): Promise<BacklogBoard> {
   const supabase = getSupabaseServerClient();
 
-  const { data: columnRows, error: columnsError } = await supabase
-    .from("backlog_columns")
-    .select("*")
-    .order("position");
-  if (columnsError) throw columnsError;
-
-  const columns = (columnRows ?? []) as BacklogColumn[];
-  const columnIds = columns.map((column) => column.id);
-
-  if (columnIds.length === 0) {
-    const [clientsResult, guidesResult, usersResult, servicesResult] =
-      await Promise.all([
-        supabase
-      .from("gallery_clients")
-      .select("id, name, payment_day, color")
-      .order("name"),
-        supabase.from("guides").select("id, title").order("title"),
-        supabase.from("users").select("id, username").order("username"),
-        supabase
-          .from("services")
-          .select("id, name, price_cents")
-          .eq("active", true)
-          .order("position"),
-      ]);
-    return {
-      columns,
-      cards: [],
-      checklist: [],
-      activity: [],
-      clients: (clientsResult.data ?? []) as BacklogClientOption[],
-      guides: (guidesResult.data ?? []) as BacklogGuideOption[],
-      users: (usersResult.data ?? []) as BacklogUserOption[],
-      services: (servicesResult.data ?? []) as ServiceOption[],
-    };
-  }
-
-  const { data: cardRows, error: cardsError } = await supabase
-    .from("backlog_cards")
-    .select("*")
-    .in("column_id", columnIds)
-    .order("column_id")
-    .order("position");
-  if (cardsError) throw cardsError;
-
-  const rawCards = (cardRows ?? []) as Omit<BacklogCard, "assignee_ids">[];
-  const cardIds = rawCards.map((card) => card.id);
-
-  const { data: assigneeRows, error: assigneesError } = cardIds.length
-    ? await supabase
-        .from("backlog_card_assignees")
-        .select("card_id, user_id")
-        .in("card_id", cardIds)
-    : { data: [], error: null };
-  if (assigneesError) throw assigneesError;
-
-  const assigneesByCard = new Map<string, string[]>();
-  for (const row of assigneeRows ?? []) {
-    const cardId = row.card_id as string;
-    const list = assigneesByCard.get(cardId);
-    if (list) list.push(row.user_id as string);
-    else assigneesByCard.set(cardId, [row.user_id as string]);
-  }
-
-  const cards: BacklogCard[] = rawCards.map((card) => ({
-    ...card,
-    assignee_ids: assigneesByCard.get(card.id) ?? [],
-  }));
-
+  // Uma rodada só. Antes eram quatro em série (colunas, cards, responsáveis,
+  // o resto), e cada uma pagava a ida e volta até o banco. Checklist,
+  // atividade e responsáveis vêm do quadro inteiro e são filtrados em memória;
+  // o fim da lista de cards é o mesmo, porque todo card pertence a uma coluna.
   const [
+    columnsResult,
+    cardsResult,
+    assigneesResult,
     checklistResult,
     activityResult,
     clientsResult,
@@ -159,21 +98,22 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
     usersResult,
     servicesResult,
   ] = await Promise.all([
-    cardIds.length
-      ? supabase
-          .from("backlog_checklist_items")
-          .select("*")
-          .in("card_id", cardIds)
-          .order("card_id")
-          .order("position")
-      : Promise.resolve({ data: [], error: null }),
-    cardIds.length
-      ? supabase
-          .from("backlog_card_activity")
-          .select("*")
-          .in("card_id", cardIds)
-          .order("created_at", { ascending: false })
-      : Promise.resolve({ data: [], error: null }),
+    supabase.from("backlog_columns").select("*").order("position"),
+    supabase
+      .from("backlog_cards")
+      .select("*")
+      .order("column_id")
+      .order("position"),
+    supabase.from("backlog_card_assignees").select("card_id, user_id"),
+    supabase
+      .from("backlog_checklist_items")
+      .select("*")
+      .order("card_id")
+      .order("position"),
+    supabase
+      .from("backlog_card_activity")
+      .select("*")
+      .order("created_at", { ascending: false }),
     supabase
       .from("gallery_clients")
       .select("id, name, payment_day, color")
@@ -187,6 +127,9 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
       .order("position"),
   ]);
 
+  if (columnsResult.error) throw columnsResult.error;
+  if (cardsResult.error) throw cardsResult.error;
+  if (assigneesResult.error) throw assigneesResult.error;
   if (checklistResult.error) throw checklistResult.error;
   if (activityResult.error) throw activityResult.error;
   if (clientsResult.error) throw clientsResult.error;
@@ -194,11 +137,37 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
   if (usersResult.error) throw usersResult.error;
   if (servicesResult.error) throw servicesResult.error;
 
+  const columns = (columnsResult.data ?? []) as BacklogColumn[];
+  const columnIds = new Set(columns.map((column) => column.id));
+
+  const rawCards = ((cardsResult.data ?? []) as Omit<
+    BacklogCard,
+    "assignee_ids"
+  >[]).filter((card) => columnIds.has(card.column_id));
+  const cardIds = new Set(rawCards.map((card) => card.id));
+
+  const assigneesByCard = new Map<string, string[]>();
+  for (const row of assigneesResult.data ?? []) {
+    const cardId = row.card_id as string;
+    const list = assigneesByCard.get(cardId);
+    if (list) list.push(row.user_id as string);
+    else assigneesByCard.set(cardId, [row.user_id as string]);
+  }
+
+  const cards: BacklogCard[] = rawCards.map((card) => ({
+    ...card,
+    assignee_ids: assigneesByCard.get(card.id) ?? [],
+  }));
+
   return {
     columns,
     cards,
-    checklist: (checklistResult.data ?? []) as BacklogChecklistItem[],
-    activity: (activityResult.data ?? []) as BacklogActivity[],
+    checklist: ((checklistResult.data ?? []) as BacklogChecklistItem[]).filter(
+      (item) => cardIds.has(item.card_id)
+    ),
+    activity: ((activityResult.data ?? []) as BacklogActivity[]).filter(
+      (entry) => cardIds.has(entry.card_id)
+    ),
     clients: (clientsResult.data ?? []) as BacklogClientOption[],
     guides: (guidesResult.data ?? []) as BacklogGuideOption[],
     users: (usersResult.data ?? []) as BacklogUserOption[],
