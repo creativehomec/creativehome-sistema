@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmar } from "@/components/ConfirmHost";
 import { useTransition } from "react";
 import { DEFAULT_INVOICE_CLOSING, formatBRL } from "@/lib/billingTypes";
 import {
@@ -94,15 +95,16 @@ export function CloseMonthForm({
           </form>
         </details>
         <form
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
             if (
-              !window.confirm(
+              !(await confirmar(
                 `Reabrir ${monthLabel} de ${clientName}? A nota de ${formatBRL(
                   invoice.total_cents
-                )} será apagada, e o total volta a acompanhar o quadro de entregas.`
-              )
+                )} será apagada, e o total volta a acompanhar o quadro de entregas.`,
+                "Reabrir"
+              ))
             ) {
               return;
             }
@@ -124,16 +126,17 @@ export function CloseMonthForm({
 
   return (
     <form
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         if (
-          !window.confirm(
+          !(await confirmar(
             `Fechar ${monthLabel} de ${clientName}: ${itemCount} ${
               itemCount === 1 ? "entrega" : "entregas"
             }, ${formatBRL(totalCents)}.\n\nO valor fica congelado — editar ou ` +
-              `excluir uma entrega depois não muda mais a nota. Dá pra reabrir se precisar.`
-          )
+              `excluir uma entrega depois não muda mais a nota. Dá pra reabrir se precisar.`,
+            "Fechar mês"
+          ))
         ) {
           return;
         }

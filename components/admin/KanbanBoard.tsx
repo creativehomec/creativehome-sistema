@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmar } from "@/components/ConfirmHost";
 import {
   useCallback,
   useEffect,
@@ -583,15 +584,16 @@ function ColumnHeader({
           </button>
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               if (
-                !window.confirm(
+                !(await confirmar(
                   `Excluir a coluna "${column.name}"? ${
                     count === 1
                       ? "1 entrega será excluída"
                       : `${count} entregas serão excluídas`
-                  } junto.`
-                )
+                  } junto.`,
+                  "Excluir"
+                ))
               ) {
                 return;
               }
