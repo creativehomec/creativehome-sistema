@@ -1,3 +1,4 @@
+import { ConfirmHost } from "@/components/ConfirmHost";
 import { MobileOnboarding } from "@/components/admin/MobileOnboarding";
 import { getCurrentSession } from "@/lib/session";
 
@@ -33,6 +34,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         {/* Passo a passo da primeira vez no celular: instalar na Tela de Início
             e ligar as notificações. Sem sessão não há pra quem notificar. */}
         {session ? <MobileOnboarding /> : null}
+        {/* confirmar(): pergunta "tem certeza?" na própria tela — o confirm do
+            navegador não aparece no app do Mac (WebView). */}
+        <ConfirmHost />
       </main>
     </>
   );

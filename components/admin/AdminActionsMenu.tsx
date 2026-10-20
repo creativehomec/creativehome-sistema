@@ -4,6 +4,7 @@ import {
   Briefcase,
   CalendarClock,
   Clapperboard,
+  HardDrive,
   Images,
   Kanban,
   Library,
@@ -31,6 +32,7 @@ const ACTIONS: {
   { href: "/admin/clientes", label: "Clientes", icon: Briefcase, features: ["clientes", "financeiro"] },
   { href: "/admin/agenda", label: "Minha Agenda", icon: CalendarClock, features: ["agenda"] },
   { href: "/admin/lettering", label: "Lettering", icon: PenLine, features: ["lettering"] },
+  { href: "/admin/armazenamento", label: "Armazenamento", icon: HardDrive, features: ["armazenamento"] },
 ];
 
 export function AdminActionsMenu({
