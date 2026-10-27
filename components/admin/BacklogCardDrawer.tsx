@@ -553,6 +553,23 @@ export function BacklogCardDrawer({
           </div>
 
           <div>
+            <label className={labelClass} htmlFor="backlog-client-plan">
+              Plano pro cliente
+            </label>
+            <textarea
+              id="backlog-client-plan"
+              name="client_plan"
+              defaultValue={card.client_plan}
+              rows={4}
+              placeholder={"Gancho: …\nCenário: …\nPalavra-chave: …"}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-neutral-500">
+              Aparece no calendário do portal do cliente. Uma linha por item, &ldquo;Rótulo: texto&rdquo;.
+            </p>
+          </div>
+
+          <div>
             <label className={labelClass} htmlFor="backlog-description">
               Observações internas
             </label>

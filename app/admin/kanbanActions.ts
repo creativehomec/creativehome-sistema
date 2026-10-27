@@ -32,8 +32,10 @@ import {
   setBacklogCardSchedule,
   updateBacklogCard,
   updateBacklogColumn,
+  getCardPortalInfo,
 } from "@/lib/backlog";
 import { notifyUser } from "@/lib/notifications";
+import { notifyClientUsers } from "@/lib/clientPush";
 import {
   removeBacklogCardFromCalendar,
   syncBacklogCardToCalendar,
@@ -106,6 +108,10 @@ export async function updateBacklogColumnAction(formData: FormData) {
   await updateBacklogColumn(String(formData.get("id")), {
     name: String(formData.get("name") ?? ""),
     color: String(formData.get("color") ?? "#6b7280"),
+    // Sentinela: checkbox desmarcado some do FormData.
+    clientVisible: formData.has("client_visible_present")
+      ? formData.get("client_visible") === "on"
+      : undefined,
   });
   revalidateBacklog();
 }
@@ -177,6 +183,16 @@ export async function moveBacklogCardAction(params: {
     authorId: session?.userId ?? null,
   });
   if (result.moved) {
+    // Entrou numa coluna liberada ao cliente: ele passa a ver o material, e é
+    // avisado no celular.
+    const info = await getCardPortalInfo(params.cardId);
+    if (info?.clientId && info.columnVisible) {
+      await notifyClientUsers(info.clientId, {
+        title: "Novo material para aprovar",
+        body: info.title,
+        url: "/cliente/materiais",
+      });
+    }
     await notifyAssignees({
       userIds: result.moved.assigneeIds,
       actorId: session?.userId ?? null,

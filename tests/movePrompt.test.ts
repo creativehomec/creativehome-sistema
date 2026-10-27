@@ -15,6 +15,7 @@ function coluna(
     position: 0,
     billable,
     paid,
+    client_visible: false,
     created_at: "2026-09-01T00:00:00Z",
   };
 }

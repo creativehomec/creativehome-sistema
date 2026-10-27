@@ -567,6 +567,18 @@ function ColumnHeader({
             </option>
           ))}
         </select>
+        {/* Campo-sentinela: sem ele um checkbox desmarcado sumiria do
+            FormData e a ação não saberia diferenciar "desmarcou" de "não veio". */}
+        <input type="hidden" name="client_visible_present" value="1" />
+        <label className="flex items-center gap-2 text-xs text-neutral-600">
+          <input
+            type="checkbox"
+            name="client_visible"
+            defaultChecked={column.client_visible}
+            className="size-3.5"
+          />
+          O cliente vê estas entregas no portal
+        </label>
         <div className="flex items-center gap-3">
           <button
             type="submit"

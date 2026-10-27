@@ -1,3 +1,4 @@
+import { galleryTitle } from "@/lib/editorialMonths";
 import { notFound } from "next/navigation";
 import {
   buildGalleryFolderTree,
@@ -13,7 +14,14 @@ export const dynamic = "force-dynamic";
 // link próprio que pode ser mandado direto pro cliente.
 type Params = Promise<{ slug: string[] }>;
 
-export default async function PublicGalleryPage({ params }: { params: Params }) {
+export default async function PublicGalleryPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: Promise<{ de?: string }>;
+}) {
+  const fromPortal = (await searchParams).de === "portal";
   const { slug: segments } = await params;
   const [slug, ...folderPath] = segments ?? [];
 
@@ -41,7 +49,7 @@ export default async function PublicGalleryPage({ params }: { params: Params }) 
         <header className="mb-10 border-b border-neutral-200 pb-6 text-center">
           <BrandLogo className="mx-auto mb-8 block h-9 w-auto text-black" />
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-            Galeria
+            {galleryTitle(client.name, client.gallery_article)}
           </p>
         </header>
 
@@ -54,6 +62,7 @@ export default async function PublicGalleryPage({ params }: { params: Params }) 
             root={root}
             clientName={client.name}
             slug={client.slug}
+            fromPortal={fromPortal}
             initialPath={folderPath.map((segment) => decodeURIComponent(segment))}
           />
         )}

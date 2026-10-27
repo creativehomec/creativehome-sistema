@@ -6,12 +6,13 @@ import type { ServiceOption } from "@/lib/billingTypes";
 
 export type { ServiceOption };
 
-export const BACKLOG_FORMATS = ["reel", "carrossel", "foto", "story"] as const;
+export const BACKLOG_FORMATS = ["reel", "carrossel", "card", "foto", "story"] as const;
 export type BacklogFormat = (typeof BACKLOG_FORMATS)[number];
 
 export const BACKLOG_FORMAT_LABELS: Record<BacklogFormat, string> = {
   reel: "Reel",
   carrossel: "Carrossel",
+  card: "Card",
   foto: "Foto",
   story: "Story",
 };
@@ -36,6 +37,8 @@ export interface BacklogColumn {
   billable: boolean;
   /** Entre as faturáveis, a que significa dinheiro já recebido. */
   paid: boolean;
+  /** Os cards desta coluna aparecem no portal do cliente. */
+  client_visible: boolean;
   created_at: string;
 }
 
@@ -49,9 +52,13 @@ export interface BacklogCard {
   position: number;
   title: string;
   description: string;
+  /** Plano mostrado ao cliente no portal; linhas "Rótulo: valor". */
+  client_plan: string;
   format: BacklogFormat;
   drive_url: string | null;
   cover_url: string | null;
+  /** Arquivos da galeria do cliente mostrados na prévia do portal. */
+  media_image_ids: string[];
   caption: string;
   post_date: string | null;
   post_time: string | null;

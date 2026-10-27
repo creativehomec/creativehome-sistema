@@ -554,3 +554,46 @@ alter table gallery_clients add column if not exists color text;
 -- supabase/migrations/0045_archive_clients.sql).
 alter table gallery_clients
   add column if not exists archived_at timestamptz;
+
+-- Calendário editorial e artigo da galeria (ver supabase/migrations/0072_editorial_calendar.sql).
+alter table gallery_clients
+  add column if not exists gallery_article text not null default 'do'
+    check (gallery_article in ('do', 'da'));
+
+create table if not exists editorial_ideas (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references gallery_clients(id) on delete cascade,
+  month date not null,
+  title text not null,
+  notes text not null default '',
+  internal boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists editorial_ideas_client_month_idx
+  on editorial_ideas(client_id, month);
+
+alter table editorial_ideas enable row level security;
+
+-- Coluna visível ao cliente no portal (ver supabase/migrations/0073_column_client_visible.sql).
+alter table backlog_columns
+  add column if not exists client_visible boolean not null default false;
+
+-- Autor da ideia do calendário (ver supabase/migrations/0074_editorial_idea_author.sql).
+alter table editorial_ideas
+  add column if not exists created_by uuid references users(id) on delete set null;
+
+-- Vários logins por cliente e convite de cliente (ver supabase/migrations/0075_portal_multi_login.sql).
+alter table users
+  add column if not exists full_name text not null default '',
+  add column if not exists portal_label text not null default '';
+alter table invites drop constraint if exists invites_role_check;
+alter table invites
+  add constraint invites_role_check check (role in ('admin', 'member', 'client'));
+alter table invites
+  add column if not exists client_id uuid references gallery_clients(id) on delete cascade,
+  add column if not exists label text not null default '';
+
+-- Arquivos da prévia do material no portal (ver supabase/migrations/0076_card_media.sql).
+alter table backlog_cards
+  add column if not exists media_image_ids uuid[] not null default '{}';

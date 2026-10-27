@@ -19,19 +19,28 @@ const TABS: { href: string; label: string; feature: FeatureKey }[] = [
  * acompanha para onde foi. Mola sem repique (`bounce: 0`) porque nada aqui
  * vem de um gesto com inércia — é um toque, não um arremesso.
  */
-export function ClientTabs({ features }: { features: FeatureKey[] }) {
+export function ClientTabs({
+  features = [],
+  tabs,
+  label = "Seções de clientes",
+}: {
+  features?: FeatureKey[];
+  /** Abas próprias (Área do cliente); sem elas, as de Clientes. */
+  tabs?: { href: string; label: string }[];
+  label?: string;
+}) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion();
 
   return (
     <nav
-      aria-label="Seções de clientes"
+      aria-label={label}
       // No celular as abas podem não caber numa linha e quebrando custavam
       // uma faixa inteira de altura antes do conteúdo: viram uma faixa que
       // rola. No desktop cabem e ficam todas à vista.
       className="flex items-center gap-1 overflow-x-auto rounded-lg border border-neutral-200 bg-white/90 p-1 backdrop-blur-md [scrollbar-width:none] sm:flex-wrap sm:overflow-visible"
     >
-      {TABS.filter((tab) => features.includes(tab.feature)).map((tab) => {
+      {(tabs ?? TABS.filter((tab) => features.includes(tab.feature))).map((tab) => {
         const current = pathname === tab.href;
         return (
           <Link

@@ -5,6 +5,7 @@ import {
   type NotificationKind,
 } from "@/lib/notificationTypes";
 import { sendPushToUser } from "@/lib/push";
+import { listUsers } from "@/lib/users";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export { NOTIFICATION_LIMIT };
@@ -96,4 +97,18 @@ export async function markAllNotificationsRead(userId: string) {
     .eq("user_id", userId)
     .is("read_at", null);
   if (error) throw error;
+}
+
+/** Avisa todos os admins (ideia nova do cliente no portal, por exemplo). */
+export async function notifyAdmins(
+  params: Omit<Parameters<typeof notifyUser>[0], "userId">
+) {
+  const admins = (await listUsers()).filter((u) => u.role === "admin");
+  await Promise.all(
+    admins.map((u) =>
+      notifyUser({ ...params, userId: u.id }).catch((err) =>
+        console.error("Falha ao avisar admin", err)
+      )
+    )
+  );
 }

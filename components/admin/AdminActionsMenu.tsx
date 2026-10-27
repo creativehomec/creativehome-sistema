@@ -5,6 +5,7 @@ import {
   CalendarClock,
   Clapperboard,
   HardDrive,
+  MonitorSmartphone,
   Images,
   Kanban,
   Library,
@@ -33,6 +34,7 @@ const ACTIONS: {
   { href: "/admin/agenda", label: "Minha Agenda", icon: CalendarClock, features: ["agenda"] },
   { href: "/admin/lettering", label: "Lettering", icon: PenLine, features: ["lettering"] },
   { href: "/admin/armazenamento", label: "Armazenamento", icon: HardDrive, features: ["armazenamento"] },
+  { href: "/admin/area-do-cliente", label: "Área do cliente", icon: MonitorSmartphone, features: ["area-do-cliente"] },
 ];
 
 export function AdminActionsMenu({
