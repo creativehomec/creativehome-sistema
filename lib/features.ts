@@ -18,6 +18,7 @@ export const FEATURES = [
   { key: "agenda", label: "Minha Agenda" },
   { key: "lettering", label: "Lettering" },
   { key: "armazenamento", label: "Armazenamento" },
+  { key: "area-do-cliente", label: "Área do cliente" },
 ] as const;
 
 export type FeatureKey = (typeof FEATURES)[number]["key"];

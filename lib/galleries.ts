@@ -1,6 +1,7 @@
 import "server-only";
 import { isClientColor } from "@/lib/backlogTypes";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { sameName } from "@/lib/clientLogoMatch";
 import { isRenderableMediaMimeType } from "@/lib/googleDrive";
 import { isLikelyImageUrl } from "@/lib/references";
 
@@ -24,6 +25,8 @@ export interface GalleryClient {
   payment_day: number | null;
   /** Cor do rótulo nos cards — chave de CLIENT_COLORS ou hex; null = automática. */
   color: string | null;
+  /** "do" ou "da", pro título "Galeria do 14Bis" / "Galeria da Dra. Juliana". */
+  gallery_article: "do" | "da";
   /** Cliente fora de atividade: sai das listas, mantém o histórico. */
   archived_at: string | null;
   drive_folder_id: string | null;
@@ -439,6 +442,16 @@ export function readGalleryClientDetails(
   };
 }
 
+/** "do" ou "da" do título da galeria; mora na Área do cliente, não no cadastro. */
+export async function setGalleryClientArticle(id: string, article: "do" | "da") {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("gallery_clients")
+    .update({ gallery_article: article })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function updateGalleryClientDetails(
   id: string,
   fields: GalleryClientDetails
@@ -525,29 +538,44 @@ export async function replaceGalleryImagesFromDrive(
 ) {
   const supabase = getSupabaseServerClient();
 
-  const { error: deleteError } = await supabase
+  // Arquivo que continua na pasta mantém o id (e a seleção): os cards de
+  // entrega guardam esses ids em `media_image_ids`, e apagar tudo e inserir de
+  // novo deixava a mídia dos materiais em aprovação sumida.
+  const { data: existing, error: existingError } = await supabase
     .from("gallery_images")
-    .delete()
+    .select("id, drive_file_id")
     .eq("client_id", clientId)
     .not("drive_file_id", "is", null);
-  if (deleteError) throw deleteError;
+  if (existingError) throw existingError;
+  const idByFile = new Map((existing ?? []).map((r) => [r.drive_file_id as string, r.id as string]));
 
-  if (files.length > 0) {
-    const rows = files.map((file, index) => ({
-      client_id: clientId,
-      position: index,
-      image_url: `/api/drive-image/${file.id}`,
-      source_url: `https://drive.google.com/file/d/${file.id}/view`,
-      caption: file.name,
-      drive_file_id: file.id,
-      mime_type: file.mimeType,
-      drive_relative_path: file.relativePath || null,
-      drive_modified_time: file.modifiedTime,
-    }));
-    const { error: insertError } = await supabase
-      .from("gallery_images")
-      .insert(rows);
-    if (insertError) throw insertError;
+  const rows = files.map((file, index) => ({
+    client_id: clientId,
+    position: index,
+    image_url: `/api/drive-image/${file.id}`,
+    source_url: `https://drive.google.com/file/d/${file.id}/view`,
+    caption: file.name,
+    drive_file_id: file.id,
+    mime_type: file.mimeType,
+    drive_relative_path: file.relativePath || null,
+    drive_modified_time: file.modifiedTime,
+  }));
+  const kept = rows.filter((r) => idByFile.has(r.drive_file_id)).map((r) => ({ ...r, id: idByFile.get(r.drive_file_id)! }));
+  const added = rows.filter((r) => !idByFile.has(r.drive_file_id));
+  const keptIds = new Set(kept.map((r) => r.id));
+  const removed = (existing ?? []).map((r) => r.id as string).filter((id) => !keptIds.has(id));
+
+  if (removed.length > 0) {
+    const { error } = await supabase.from("gallery_images").delete().in("id", removed);
+    if (error) throw error;
+  }
+  if (kept.length > 0) {
+    const { error } = await supabase.from("gallery_images").upsert(kept);
+    if (error) throw error;
+  }
+  if (added.length > 0) {
+    const { error } = await supabase.from("gallery_images").insert(added);
+    if (error) throw error;
   }
 
   const { error: updateError } = await supabase
@@ -641,4 +669,51 @@ async function loadKnownDriveFileByFileId(
   });
 
   return { caption: data[0].caption, published };
+}
+
+/**
+ * Arquivos de uma galeria por id, na ordem pedida, prontos pra exibir. Filtra
+ * por `client_id` pra uma lista de ids nunca puxar arquivo de outro cliente.
+ */
+export async function listDisplayItemsByIds(
+  clientId: string,
+  ids: string[]
+): Promise<GalleryDisplayItem[]> {
+  if (ids.length === 0) return [];
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("gallery_images")
+    .select("*")
+    .eq("client_id", clientId)
+    .in("id", ids);
+  if (error) throw error;
+  const byId = new Map((data ?? []).map((image) => [image.id as string, image as GalleryImage]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((image): image is GalleryImage => Boolean(image))
+    .map(toDisplayItem);
+}
+
+/** O cliente ativo cujo nome bate com o texto (guias guardam `client_name` solto). */
+export async function findGalleryClientByName(name: string): Promise<{ id: string } | null> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("gallery_clients")
+    .select("id, name")
+    .is("archived_at", null);
+  if (error) throw error;
+  return (data ?? []).find((c) => sameName(c.name as string, name)) ?? null;
+}
+
+/** Miniaturas pro seletor de arquivos da equipe (grupo = pasta do Drive). */
+export function toPickerImages(images: GalleryImage[]) {
+  return images.map((img) => ({
+    id: img.id,
+    thumb: galleryThumbnailUrl(img, 240),
+    folder: img.drive_relative_path ?? "",
+    caption: img.caption,
+    video: isGalleryImageVideo(img),
+    /** Arquivo do vídeo (proxy do Drive), pra tirar uma capa quando o Drive não tem miniatura. */
+    videoSrc: isGalleryImageVideo(img) ? img.image_url : null,
+  }));
 }
