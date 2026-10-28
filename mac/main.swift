@@ -1,4 +1,5 @@
 import Cocoa
+import UserNotifications
 import WebKit
 
 /// GUIA_URL só serve pra testar contra o servidor local (ex.: http://localhost:3001).
@@ -11,8 +12,15 @@ if CommandLine.arguments.contains("--ler-discos") {
     exit(0)
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate,
+    UNUserNotificationCenterDelegate, WKScriptMessageHandler
+{
     var window: NSWindow!
+    var since = ISO8601DateFormatter().string(from: Date())
+    var timer: Timer?
+    var socket: URLSessionWebSocketTask?
+    var heartbeat: Timer?
+    var conectando = false
     var web: WKWebView!
     let leitor = Leitor()
     var itensIntervalo: [NSMenuItem] = []
@@ -80,9 +88,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         window.makeKeyAndOrderFront(nil)
         web.load(URLRequest(url: home))
 
+        UNUserNotificationCenter.current().delegate = self
+        // A permissão de notificação é pedida no onboarding (ou já foi dada antes).
+
         leitor.enviar = { [weak self] dados, fim in self?.enviarLeitura(dados, fim) }
         leitor.iniciar()
         onboarding.mostrarSePrimeiraVez()
+
+        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.poll(); self?.conectarTempoReal() }
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main
+        ) { _ in NSApp.dockTile.badgeLabel = nil }
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.poll(); self?.conectarTempoReal() }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { true }
@@ -90,6 +109,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func applicationShouldHandleReopen(_ app: NSApplication, hasVisibleWindows: Bool) -> Bool {
         window.makeKeyAndOrderFront(nil)
         return true
+    }
+
+    // MARK: tempo real (Supabase Realtime)
+
+    /// Pede ao site o canal do usuário logado e escuta o sinal "chegou aviso".
+    /// O sinal não leva conteúdo: ao recebê-lo, o app consulta a rota autenticada.
+    func conectarTempoReal() {
+        guard socket == nil, !conectando, web.url?.host == host else { return }
+        conectando = true
+        let js = "const r = await fetch('/api/notificacoes/canal', {cache: 'no-store'}); return r.ok ? await r.json() : null;"
+        web.callAsyncJavaScript(js, arguments: [:], in: nil, in: .page) { [weak self] result in
+            guard let self else { return }
+            self.conectando = false
+            guard case .success(let v) = result, let d = v as? [String: Any],
+                let base = d["socket"] as? String, let key = d["anonKey"] as? String,
+                let canal = d["channel"] as? String,
+                let url = URL(string: "\(base)?apikey=\(key)&vsn=1.0.0")
+            else { return }
+            let task = URLSession.shared.webSocketTask(with: url)
+            self.socket = task
+            task.resume()
+            self.enviar(task, topic: "realtime:\(canal)", event: "phx_join", payload: [
+                "config": ["broadcast": ["self": false], "presence": ["key": ""], "private": false]
+            ])
+            self.ouvir(task)
+            self.heartbeat?.invalidate()
+            self.heartbeat = Timer.scheduledTimer(withTimeInterval: 25, repeats: true) { [weak self] _ in
+                self?.enviar(task, topic: "phoenix", event: "heartbeat", payload: [:])
+            }
+        }
+    }
+
+    func enviar(_ task: URLSessionWebSocketTask, topic: String, event: String, payload: [String: Any]) {
+        let msg: [String: Any] = ["topic": topic, "event": event, "payload": payload, "ref": UUID().uuidString, "join_ref": "1"]
+        guard let data = try? JSONSerialization.data(withJSONObject: msg), let text = String(data: data, encoding: .utf8) else { return }
+        task.send(.string(text)) { _ in }
+    }
+
+    func ouvir(_ task: URLSessionWebSocketTask) {
+        task.receive { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self, self.socket === task else { return }
+                switch result {
+                case .success(let message):
+                    if case .string(let t) = message, t.contains("\"event\":\"broadcast\"") { self.poll() }
+                    self.ouvir(task)
+                case .failure:
+                    // Caiu (rede, suspensão do Mac): descarta e tenta de novo; a consulta de 30s cobre o intervalo.
+                    self.heartbeat?.invalidate()
+                    self.socket = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) { self.conectarTempoReal() }
+                }
+            }
+        }
     }
 
     // MARK: discos
@@ -130,6 +203,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     }
 
     @objc func mostrarPermissoes() { onboarding.mostrar() }
+
+    // MARK: notificações
+
+    /// Pergunta ao site o que chegou depois de `since`, usando a sessão já logada no WKWebView.
+    func poll() {
+        guard web.url?.host == host else { return }
+        let js = """
+        const r = await fetch('/api/notificacoes/novas?since=' + encodeURIComponent(since), {cache: 'no-store'});
+        if (!r.ok) return [];
+        return (await r.json()).items;
+        """
+        web.callAsyncJavaScript(js, arguments: ["since": since], in: nil, in: .page) { [weak self] result in
+            guard let self, case .success(let value) = result, let items = value as? [[String: Any]] else { return }
+            for item in items {
+                self.show(
+                    title: item["title"] as? String ?? "",
+                    body: item["body"] as? String ?? "",
+                    link: item["link"] as? String ?? "/admin")
+                if let at = item["created_at"] as? String { self.since = at }
+            }
+            if !items.isEmpty && !self.window.isKeyWindow {
+                let n = Int(NSApp.dockTile.badgeLabel ?? "0") ?? 0
+                NSApp.dockTile.badgeLabel = String(n + items.count)
+            }
+        }
+    }
+
+    func show(title: String, body: String, link: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        content.userInfo = ["link": link]
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+    }
+
+    // Mostra o banner mesmo com o app em primeiro plano.
+    func userNotificationCenter(
+        _ c: UNUserNotificationCenter, willPresent n: UNNotification,
+        withCompletionHandler done: @escaping (UNNotificationPresentationOptions) -> Void
+    ) { done([.banner, .sound]) }
+
+    func userNotificationCenter(
+        _ c: UNUserNotificationCenter, didReceive r: UNNotificationResponse,
+        withCompletionHandler done: @escaping () -> Void
+    ) {
+        let link = r.notification.request.content.userInfo["link"] as? String ?? "/admin"
+        if let url = URL(string: link, relativeTo: home) { web.load(URLRequest(url: url.absoluteURL)) }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        done()
+    }
 
     // MARK: carregamento
 
@@ -175,6 +301,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func webView(_ w: WKWebView, didFinish navigation: WKNavigation!) {
         carregando.isHidden = true
         web.alphaValue = 1
+        conectarTempoReal()
         leitor.ler(varrer: false)
     }
 
