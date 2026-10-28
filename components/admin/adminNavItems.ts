@@ -9,6 +9,7 @@ import {
   Library,
   PenLine,
   Receipt,
+  ScrollText,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -26,6 +27,7 @@ export type AdminNavItem = {
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/admin/guias", label: "Guia de Captação", icon: Clapperboard, features: ["guias"], group: "Criação" },
+  { href: "/admin/roteiros", label: "Roteiros", icon: ScrollText, features: ["guias"], group: "Criação" },
   { href: "/admin/lettering", label: "Lettering", icon: PenLine, features: ["lettering"], group: "Criação" },
   { href: "/admin/biblioteca", label: "Biblioteca", icon: Library, features: ["biblioteca"], group: "Criação" },
   { href: "/admin/clientes", label: "Clientes", icon: Briefcase, features: ["clientes", "financeiro"], group: "Clientes" },
