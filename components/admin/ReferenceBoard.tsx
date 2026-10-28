@@ -131,7 +131,7 @@ function PinForm({
     tags
       .split(",")
       .map((tag) => tagKey(tag))
-      .filter(Boolean)
+      .filter(Boolean),
   );
 
   function addTag(tag: string) {
@@ -171,7 +171,11 @@ function PinForm({
   }
 
   return (
-    <form id="reference-pin-form" onSubmit={handleSubmit} className="grid gap-3">
+    <form
+      id="reference-pin-form"
+      onSubmit={handleSubmit}
+      className="grid gap-3"
+    >
       {pin ? <input type="hidden" name="id" value={pin.id} /> : null}
 
       <div>
@@ -301,7 +305,7 @@ function PinForm({
             onClick={() => {
               const campo = document.getElementById("pin-url");
               void puxarCapa(
-                campo instanceof HTMLInputElement ? campo.value : ""
+                campo instanceof HTMLInputElement ? campo.value : "",
               );
             }}
             className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
@@ -336,12 +340,12 @@ export function ReferenceBoard({ pins }: { pins: ReferencePin[] }) {
 
   const spelling = useMemo(
     () => buildTagSpellingMap(pins.flatMap((pin) => pin.tags)),
-    [pins]
+    [pins],
   );
 
   const allTags = useMemo(
     () => [...spelling.values()].sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [spelling]
+    [spelling],
   );
 
   /** Um chip por cliente, agrupando grafias que só diferem em caixa/acento. */
@@ -375,7 +379,9 @@ export function ReferenceBoard({ pins }: { pins: ReferencePin[] }) {
       if (!term) return true;
 
       return normalize(
-        [pin.title, pin.note, pin.client, pinHost(pin.url), ...pin.tags].join(" ")
+        [pin.title, pin.note, pin.client, pinHost(pin.url), ...pin.tags].join(
+          " ",
+        ),
       ).includes(term);
     });
   }, [pins, query, activeTags, activeClients]);
@@ -385,7 +391,7 @@ export function ReferenceBoard({ pins }: { pins: ReferencePin[] }) {
     setActiveTags((current) =>
       current.includes(key)
         ? current.filter((item) => item !== key)
-        : [...current, key]
+        : [...current, key],
     );
   }
 
@@ -394,12 +400,18 @@ export function ReferenceBoard({ pins }: { pins: ReferencePin[] }) {
     setActiveClients((current) =>
       current.includes(key)
         ? current.filter((item) => item !== key)
-        : [...current, key]
+        : [...current, key],
     );
   }
 
   async function handleDelete(pin: ReferencePin) {
-    if (!(await confirmar(`Excluir a referência "${pin.title || pin.url}"?`, "Excluir"))) return;
+    if (
+      !(await confirmar(
+        `Excluir a referência "${pin.title || pin.url}"?`,
+        "Excluir",
+      ))
+    )
+      return;
     const formData = new FormData();
     formData.set("id", pin.id);
     startTransition(async () => {
@@ -408,116 +420,128 @@ export function ReferenceBoard({ pins }: { pins: ReferencePin[] }) {
   }
 
   const hasFilters =
-    query.trim().length > 0 || activeTags.length > 0 || activeClients.length > 0;
+    query.trim().length > 0 ||
+    activeTags.length > 0 ||
+    activeClients.length > 0;
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por nicho, título, cliente ou site..."
-            aria-label="Buscar nas referências"
-            className={`${inputClass} pl-9 ${query ? "pr-9" : ""}`}
-          />
-          {query ? (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              aria-label="Limpar busca"
-              className="absolute top-1/2 right-2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
-            >
-              <XIcon className="size-4" />
-            </button>
-          ) : null}
+      {/* O fundo do admin é o degradê da marca: texto solto sobre ele perde
+          contraste, então busca e filtros ficam num painel creme. */}
+      <div className="mb-6 rounded-2xl bg-[var(--brand-cream)] p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="relative min-w-56 flex-1">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por nicho, título, cliente ou site..."
+              aria-label="Buscar nas referências"
+              className={`${inputClass} pl-9 ${query ? "pr-9" : ""}`}
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Limpar busca"
+                className="absolute top-1/2 right-2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <XIcon className="size-4" />
+              </button>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setEditing("new")}
+            className="flex items-center gap-1.5 rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            <PlusIcon className="size-4" />
+            Adicionar referência
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setEditing("new")}
-          className="flex items-center gap-1.5 rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-        >
-          <PlusIcon className="size-4" />
-          Adicionar referência
-        </button>
+        {allClients.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs font-medium text-neutral-600">
+              Clientes
+            </span>
+            {allClients.map((name) => {
+              const active = activeClients.includes(normalize(name));
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => toggleClient(name)}
+                  aria-pressed={active}
+                  className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                    active
+                      ? "bg-neutral-900 text-white"
+                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  }`}
+                >
+                  {name}
+                </button>
+              );
+            })}
+            {activeClients.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setActiveClients([])}
+                className="px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900"
+              >
+                Limpar clientes
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {allTags.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {allClients.length > 0 ? (
+              <span className="mr-1 text-xs font-medium text-neutral-600">
+                Tags
+              </span>
+            ) : null}
+            {allTags.map((tag) => {
+              const active = activeTags.includes(tagKey(tag));
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => toggleTag(tag)}
+                  aria-pressed={active}
+                  className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                    active
+                      ? "bg-neutral-900 text-white"
+                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  }`}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+            {activeTags.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setActiveTags([])}
+                className="px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900"
+              >
+                Limpar tags
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {hasFilters && visible.length > 0 ? (
+          <p className="mt-3 text-xs text-neutral-600">
+            {visible.length} de {pins.length} referências
+          </p>
+        ) : null}
       </div>
 
-      {allClients.length > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-xs font-medium text-neutral-500">
-            Clientes
-          </span>
-          {allClients.map((name) => {
-            const active = activeClients.includes(normalize(name));
-            return (
-              <button
-                key={name}
-                type="button"
-                onClick={() => toggleClient(name)}
-                aria-pressed={active}
-                className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
-                  active
-                    ? "bg-neutral-900 text-white"
-                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                }`}
-              >
-                {name}
-              </button>
-            );
-          })}
-          {activeClients.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setActiveClients([])}
-              className="px-2 py-1 text-xs text-neutral-500 hover:text-neutral-900"
-            >
-              Limpar clientes
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {allTags.length > 0 ? (
-        <div className="mb-6 flex flex-wrap items-center gap-1.5">
-          {allClients.length > 0 ? (
-            <span className="mr-1 text-xs font-medium text-neutral-500">
-              Tags
-            </span>
-          ) : null}
-          {allTags.map((tag) => {
-            const active = activeTags.includes(tagKey(tag));
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                aria-pressed={active}
-                className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
-                  active
-                    ? "bg-neutral-900 text-white"
-                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                }`}
-              >
-                {tag}
-              </button>
-            );
-          })}
-          {activeTags.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setActiveTags([])}
-              className="px-2 py-1 text-xs text-neutral-500 hover:text-neutral-900"
-            >
-              Limpar tags
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
       {visible.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="rounded-2xl bg-[var(--brand-cream)] p-6 text-sm text-neutral-700">
           {pins.length === 0
             ? "Nenhuma referência ainda. Use “Adicionar referência” para começar."
             : "Nenhuma referência encontrada com essa busca."}
@@ -562,7 +586,7 @@ export function ReferenceBoard({ pins }: { pins: ReferencePin[] }) {
                     </a>
                   ) : null}
                   {host ? (
-                    <p className="truncate text-xs text-neutral-400">{host}</p>
+                    <p className="truncate text-xs text-neutral-500">{host}</p>
                   ) : null}
                   {pin.client ? (
                     <p className="mt-1 truncate text-xs font-medium text-neutral-700">
@@ -624,12 +648,6 @@ export function ReferenceBoard({ pins }: { pins: ReferencePin[] }) {
           })}
         </div>
       )}
-
-      {hasFilters && visible.length > 0 ? (
-        <p className="mt-4 text-xs text-neutral-500">
-          {visible.length} de {pins.length} referências
-        </p>
-      ) : null}
 
       {editing ? (
         <Dialog
