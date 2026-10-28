@@ -191,6 +191,39 @@ export function isLikelyVideoUrl(url: string): boolean {
   }
 }
 
+export type ReferenceKind = "image" | "video" | "link";
+
+/**
+ * Decide, na hora de salvar, o que um link colado é e qual capa mostrar — o
+ * mural só lê esses dois campos depois, sem reinspecionar URL a cada render.
+ *
+ * Nenhum arquivo é hospedado: a capa é sempre um endereço do próprio site de
+ * origem. Para YouTube ela é previsível; para o resto vem da og:image, que em
+ * Instagram e Facebook é assinada e um dia expira — quando isso acontece o
+ * card cai no favicon do domínio e a capa pode ser reapontada à mão.
+ */
+export async function resolveReferencePin(
+  url: string
+): Promise<{ kind: ReferenceKind; thumb_url: string }> {
+  if (isLikelyImageUrl(url)) return { kind: "image", thumb_url: url };
+
+  const drive = resolveDriveImageUrl(url);
+  if (drive) return { kind: "image", thumb_url: drive };
+
+  if (isLikelyVideoUrl(url)) return { kind: "video", thumb_url: "" };
+
+  const youtubeId = youtubeVideoId(url);
+  if (youtubeId) {
+    return {
+      kind: "video",
+      thumb_url: `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`,
+    };
+  }
+
+  const ogImage = await fetchOgImage(url);
+  return { kind: "link", thumb_url: ogImage ?? "" };
+}
+
 // A página de embed do Instagram é pública e traz o JSON do post com todas as
 // imagens do carrossel (edge_sidecar_to_children). A og:image só tem a capa.
 const BROWSER_USER_AGENT =
