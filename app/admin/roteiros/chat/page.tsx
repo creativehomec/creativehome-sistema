@@ -18,7 +18,7 @@ export default async function ChatRoteirosPage() {
       <div className="mb-4 flex justify-end">
         <Link
           href="/admin/roteiros"
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+          className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
         >
           Gerador
         </Link>

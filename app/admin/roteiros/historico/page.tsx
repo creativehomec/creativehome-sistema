@@ -33,9 +33,9 @@ export default async function HistoricoRoteirosPage({
             defaultValue={tag}
             placeholder="Filtrar por tag/cliente..."
             aria-label="Filtrar por tag ou cliente"
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm focus:border-neutral-500 focus:outline-none"
+            className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-neutral-500 focus:outline-none"
           />
-          <label className="flex items-center gap-1.5 text-sm text-neutral-600">
+          <label className="flex items-center gap-1.5 text-sm text-[var(--brand-cream)]">
             <input
               type="checkbox"
               name="favoritos"
@@ -47,14 +47,14 @@ export default async function HistoricoRoteirosPage({
           </label>
           <button
             type="submit"
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+            className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
           >
             Filtrar
           </button>
           {(tag || favoritos) && (
             <Link
               href="/admin/roteiros/historico"
-              className="text-sm text-neutral-500 underline hover:text-neutral-900"
+              className="text-sm text-[var(--brand-cream)] underline hover:text-white"
             >
               limpar
             </Link>
@@ -69,7 +69,7 @@ export default async function HistoricoRoteirosPage({
       </div>
 
       {roteiros.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="rounded-2xl bg-[var(--brand-cream)] p-6 text-sm text-neutral-700">
           Nenhum roteiro encontrado com esse filtro.
         </p>
       ) : (

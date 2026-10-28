@@ -32,28 +32,28 @@ export default async function RoteirosPage({
       {/* No celular a linha é só dos botões, dividindo a largura; a
           descrição volta a partir do sm, onde cabe ao lado deles. */}
       <div className="mb-6 flex items-baseline justify-between gap-4">
-        <p className="hidden text-sm text-neutral-500 sm:block">
+        <p className="hidden text-sm text-[var(--brand-cream)] sm:block">
           AIDA · PAS · Midtrack · 6 Chapéus — roteiros de vídeos curtos para redes sociais
         </p>
         <div className="flex flex-1 gap-2 sm:flex-none sm:shrink-0">
           {/* Em tela larga o chat já está ao lado: o botão só existe onde não cabe. */}
           <Link
             href="/admin/roteiros/chat"
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 sm:flex-none sm:py-1.5 xl:hidden"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 sm:flex-none sm:py-1.5 xl:hidden"
           >
             <MessageSquare className="size-4" aria-hidden />
             Chat
           </Link>
           <Link
             href="/admin/roteiros/historico"
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 sm:flex-none sm:py-1.5"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 sm:flex-none sm:py-1.5"
           >
             <History className="size-4" aria-hidden />
             Histórico
           </Link>
           <Link
             href="/admin/roteiros/colar"
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 sm:flex-none sm:py-1.5"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 sm:flex-none sm:py-1.5"
           >
             <ClipboardPaste className="size-4" aria-hidden />
             {/* No celular três botões dividem a linha: "roteiro" não cabe. */}
