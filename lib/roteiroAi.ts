@@ -39,7 +39,15 @@ async function completar(body: Record<string, unknown>): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(`Erro na API de IA (${response.status}): ${await response.text()}`);
+    const detalhe = await response.text();
+    // Sem saldo não é falha do sistema: diz o que fazer e mantém o código da
+    // API ao lado, pra quem precisar investigar.
+    if (response.status === 429 && /insufficient_quota|credit_balance_exhausted/.test(detalhe)) {
+      throw new Error(
+        "Recarregue os créditos de API para continuar. (código: insufficient_quota)"
+      );
+    }
+    throw new Error(`Erro na API de IA (${response.status}): ${detalhe}`);
   }
 
   const data = await response.json();
