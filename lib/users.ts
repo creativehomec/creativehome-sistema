@@ -1,7 +1,7 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-export type UserRole = "admin" | "member";
+export type UserRole = "admin" | "member" | "client";
 
 export interface User {
   id: string;
@@ -11,6 +11,11 @@ export interface User {
   role: UserRole;
   /** Áreas desligadas por um admin — ver lib/features.ts. */
   disabled_features: string[];
+  /** Só para role "client": o cliente a que este acesso pertence. */
+  client_id: string | null;
+  /** Nome da pessoa (logins de cliente) e função, ex.: "Gestor de tráfego". */
+  full_name: string;
+  portal_label: string;
   created_at: string;
 }
 
@@ -81,6 +86,7 @@ export async function listUsers(): Promise<PublicUser[]> {
   const { data, error } = await supabase
     .from("users")
     .select("*")
+    .neq("role", "client")
     .order("created_at", { ascending: true });
 
   if (error) throw error;
@@ -141,6 +147,9 @@ export async function createUser(fields: {
   email: string;
   password: string;
   role: UserRole;
+  clientId?: string;
+  fullName?: string;
+  portalLabel?: string;
 }): Promise<PublicUser> {
   const supabase = getSupabaseServerClient();
   const password_hash = await hashPassword(fields.password);
@@ -151,6 +160,9 @@ export async function createUser(fields: {
       email: fields.email.trim(),
       password_hash,
       role: fields.role,
+      client_id: fields.clientId ?? null,
+      full_name: fields.fullName?.trim() ?? "",
+      portal_label: fields.portalLabel?.trim() ?? "",
     })
     .select("*")
     .single();
@@ -195,6 +207,75 @@ export async function updateUser(
 export async function deleteUser(id: string) {
   const supabase = getSupabaseServerClient();
   const { error } = await supabase.from("users").delete().eq("id", id);
+  if (error) throw error;
+  forgetUser(id);
+}
+
+/** Os logins do portal de um cliente, do mais antigo ao mais novo. */
+export async function listClientUsers(clientId: string): Promise<PublicUser[]> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("role", "client")
+    .eq("client_id", clientId)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []).map(toPublicUser);
+}
+
+/** Todos os logins de cliente, pra visão geral (agrupa por `client_id`). */
+export async function listAllClientUsers(): Promise<PublicUser[]> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("role", "client")
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []).map(toPublicUser);
+}
+
+/** clientId → quantos logins ele tem. */
+export async function countClientLogins(): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  for (const user of await listAllClientUsers()) {
+    if (user.client_id) counts[user.client_id] = (counts[user.client_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Edita ou remove só logins de cliente, e só do cliente informado. */
+export async function updateClientUser(
+  id: string,
+  clientId: string,
+  fields: { fullName?: string; portalLabel?: string; password?: string }
+) {
+  const supabase = getSupabaseServerClient();
+  const patch: Record<string, string> = {};
+  if (fields.fullName !== undefined) patch.full_name = fields.fullName.trim();
+  if (fields.portalLabel !== undefined) patch.portal_label = fields.portalLabel.trim();
+  if (fields.password) patch.password_hash = await hashPassword(fields.password);
+  if (!Object.keys(patch).length) return;
+
+  const { error } = await supabase
+    .from("users")
+    .update(patch)
+    .eq("id", id)
+    .eq("role", "client")
+    .eq("client_id", clientId);
+  if (error) throw error;
+  forgetUser(id);
+}
+
+export async function deleteClientUser(id: string, clientId: string) {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("users")
+    .delete()
+    .eq("id", id)
+    .eq("role", "client")
+    .eq("client_id", clientId);
   if (error) throw error;
   forgetUser(id);
 }

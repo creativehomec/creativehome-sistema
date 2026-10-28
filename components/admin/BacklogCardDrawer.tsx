@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmar } from "@/components/ConfirmHost";
 import { useRef, useState, useTransition } from "react";
 import {
   Dialog,
@@ -318,8 +319,8 @@ export function BacklogCardDrawer({
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm(`Excluir "${card.title}"? Essa ação não pode ser desfeita.`)) {
+  async function handleDelete() {
+    if (!(await confirmar(`Excluir "${card.title}"? Essa ação não pode ser desfeita.`, "Excluir"))) {
       return;
     }
     startTransition(async () => {
@@ -549,6 +550,23 @@ export function BacklogCardDrawer({
               rows={4}
               className={inputClass}
             />
+          </div>
+
+          <div>
+            <label className={labelClass} htmlFor="backlog-client-plan">
+              Plano pro cliente
+            </label>
+            <textarea
+              id="backlog-client-plan"
+              name="client_plan"
+              defaultValue={card.client_plan}
+              rows={4}
+              placeholder={"Gancho: …\nCenário: …\nPalavra-chave: …"}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-neutral-500">
+              Aparece no calendário do portal do cliente. Uma linha por item, &ldquo;Rótulo: texto&rdquo;.
+            </p>
           </div>
 
           <div>

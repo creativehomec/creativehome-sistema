@@ -119,7 +119,11 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
       .select("id, name, payment_day, color")
       .order("name"),
     supabase.from("guides").select("id, title").order("title"),
-    supabase.from("users").select("id, username").order("username"),
+    supabase
+      .from("users")
+      .select("id, username")
+      .neq("role", "client")
+      .order("username"),
     supabase
       .from("services")
       .select("id, name, price_cents")
@@ -207,7 +211,13 @@ export async function createBacklogColumn(fields: {
 
 export async function updateBacklogColumn(
   id: string,
-  fields: { name?: string; color?: string; billable?: boolean; paid?: boolean }
+  fields: {
+    name?: string;
+    color?: string;
+    billable?: boolean;
+    paid?: boolean;
+    clientVisible?: boolean;
+  }
 ) {
   const supabase = getSupabaseServerClient();
   const patch: Record<string, string | boolean> = {};
@@ -215,6 +225,7 @@ export async function updateBacklogColumn(
   if (fields.color !== undefined) patch.color = fields.color;
   if (fields.billable !== undefined) patch.billable = fields.billable;
   if (fields.paid !== undefined) patch.paid = fields.paid;
+  if (fields.clientVisible !== undefined) patch.client_visible = fields.clientVisible;
   if (Object.keys(patch).length === 0) return;
 
   const { error } = await supabase
@@ -249,12 +260,15 @@ export async function deleteBacklogColumn(id: string) {
 export interface BacklogCardInput {
   title: string;
   description: string;
+  /** Só vem do formulário do quadro de entregas; ausente = não mexe. */
+  client_plan?: string;
   format: BacklogFormat;
   client_id: string | null;
   guide_id: string | null;
   assignee_ids: string[];
   drive_url: string | null;
   cover_url: string | null;
+  media_image_ids: string[];
   caption: string;
   post_date: string | null;
   post_time: string | null;
@@ -283,6 +297,7 @@ export function readBacklogCardInput(formData: FormData): BacklogCardInput {
   return {
     title: String(formData.get("title") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim(),
+    client_plan: formData.has("client_plan") ? String(formData.get("client_plan")).trim() : undefined,
     format: normalizeBacklogFormat(formData.get("format")),
     client_id: normalizeUuid(formData.get("client_id")),
     guide_id: normalizeUuid(formData.get("guide_id")),
@@ -292,6 +307,10 @@ export function readBacklogCardInput(formData: FormData): BacklogCardInput {
       .filter((value): value is string => Boolean(value)),
     drive_url: normalizeUrl(formData.get("drive_url")),
     cover_url: normalizeUrl(formData.get("cover_url")),
+    media_image_ids: formData
+      .getAll("media_image_ids")
+      .map((value) => normalizeUuid(value))
+      .filter((value): value is string => Boolean(value)),
     caption: String(formData.get("caption") ?? "").trim(),
     post_date: normalizeDate(formData.get("post_date")),
     post_time: normalizeTime(formData.get("post_time")),
@@ -335,12 +354,14 @@ export async function createBacklogCard(
       position: (last?.position ?? -1) + 1,
       title: fields.title.trim() || "Nova entrega",
       description: fields.description ?? "",
+      client_plan: fields.client_plan ?? "",
       format: fields.format ?? "reel",
       client_id: fields.client_id ?? null,
       guide_id: fields.guide_id ?? null,
 
       drive_url: fields.drive_url ?? null,
       cover_url: fields.cover_url ?? null,
+      media_image_ids: fields.media_image_ids ?? [],
       caption: fields.caption ?? "",
       post_date: fields.post_date ?? null,
       post_time: fields.post_time ?? null,
@@ -436,11 +457,13 @@ export async function updateBacklogCard(id: string, fields: BacklogCardInput) {
     .update({
       title: fields.title || "Nova entrega",
       description: fields.description,
+      client_plan: fields.client_plan,
       format: fields.format,
       client_id: fields.client_id,
       guide_id: fields.guide_id,
       drive_url: fields.drive_url,
       cover_url: fields.cover_url,
+      media_image_ids: fields.media_image_ids,
       caption: fields.caption,
       post_date: fields.post_date,
       post_time: fields.post_time,
@@ -874,4 +897,114 @@ async function requestBacklogCardsWithDate(): Promise<number> {
     .not("post_date", "is", null);
   if (error) throw error;
   return count ?? 0;
+}
+
+/** Colunas do quadro de entregas com a contagem de cards, pra Área do cliente escolher quais o portal mostra. */
+export async function listEntregasColumnsWithCounts() {
+  const supabase = getSupabaseServerClient();
+  const [columns, cards] = await Promise.all([
+    supabase
+      .from("backlog_columns")
+      .select("id, name, color, client_visible")
+      .order("position"),
+    supabase.from("backlog_cards").select("column_id, client_id").not("client_id", "is", null),
+  ]);
+  if (columns.error) throw columns.error;
+  if (cards.error) throw cards.error;
+
+  const counts = new Map<string, number>();
+  for (const card of cards.data ?? []) {
+    counts.set(card.column_id, (counts.get(card.column_id) ?? 0) + 1);
+  }
+  return (columns.data ?? []).map((c) => ({
+    id: c.id as string,
+    name: c.name as string,
+    color: c.color as string,
+    clientVisible: c.client_visible as boolean,
+    cards: counts.get(c.id) ?? 0,
+  }));
+}
+
+/**
+ * Edição enxuta de um material pela Área do cliente. Filtra por `client_id`
+ * pra o id vindo do formulário nunca mexer em card de outro cliente.
+ */
+export async function updateClientMaterial(
+  id: string,
+  clientId: string,
+  fields: {
+    title: string;
+    format: BacklogFormat;
+    post_date: string | null;
+    caption: string;
+    guide_id: string | null;
+    drive_url: string | null;
+    media_image_ids: string[];
+    column_id: string;
+  }
+) {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("backlog_cards")
+    .update({ ...fields, title: fields.title || "Novo material", updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("client_id", clientId);
+  if (error) throw error;
+}
+
+export async function deleteClientMaterial(id: string, clientId: string) {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("backlog_cards")
+    .delete()
+    .eq("id", id)
+    .eq("client_id", clientId);
+  if (error) throw error;
+}
+
+/** A coluna é visível ao cliente? (pra decidir se avisa o portal) */
+export async function isColumnClientVisible(columnId: string): Promise<boolean> {
+  const supabase = getSupabaseServerClient();
+  const { data } = await supabase
+    .from("backlog_columns")
+    .select("client_visible")
+    .eq("id", columnId)
+    .maybeSingle();
+  return Boolean(data?.client_visible);
+}
+
+/** Cliente e título de um card, e se a coluna dele é visível ao cliente. */
+export async function getCardPortalInfo(cardId: string): Promise<{
+  clientId: string | null;
+  title: string;
+  columnVisible: boolean;
+} | null> {
+  const supabase = getSupabaseServerClient();
+  const { data } = await supabase
+    .from("backlog_cards")
+    .select("client_id, title, column:backlog_columns(client_visible)")
+    .eq("id", cardId)
+    .maybeSingle();
+  if (!data) return null;
+  const column = data.column as unknown as { client_visible: boolean } | null;
+  return {
+    clientId: data.client_id as string | null,
+    title: data.title as string,
+    columnVisible: Boolean(column?.client_visible),
+  };
+}
+
+/** Só os arquivos do material (conectar pelo portal); filtra por cliente. */
+export async function setMaterialMedia(
+  id: string,
+  clientId: string,
+  fields: { media_image_ids: string[]; drive_url: string | null }
+) {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from("backlog_cards")
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("client_id", clientId);
+  if (error) throw error;
 }

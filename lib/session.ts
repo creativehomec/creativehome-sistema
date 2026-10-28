@@ -56,6 +56,9 @@ export const getAllowedFeatures = cache(async (): Promise<FeatureKey[]> => {
   if (!session) return [];
   const all = FEATURES.map((feature) => feature.key);
   if (session.role === "admin") return all;
+  // Login de cliente só existe no portal: nenhuma área do admin, nem por
+  // server action chamada direto.
+  if (session.role === "client") return [];
   const user = await getUserById(session.userId);
   const disabled = new Set(user?.disabled_features ?? []);
   return all.filter((key) => !disabled.has(key));

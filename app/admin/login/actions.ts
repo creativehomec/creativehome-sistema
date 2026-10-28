@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME, createSessionCookieValue } from "@/lib/auth";
 import { createUser, getUserByUsername, verifyPassword } from "@/lib/users";
+import { PREVIEW_COOKIE } from "@/lib/clientPortal";
 
 export async function login(formData: FormData) {
   const username = String(formData.get("username") ?? "").trim();
@@ -75,12 +76,15 @@ export async function signup(formData: FormData) {
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
+  // Prévia que um admin deixou neste navegador não vale pra outro login.
+  if (user.role === "client") cookieStore.delete(PREVIEW_COOKIE);
 
-  redirect(next || "/admin");
+  redirect(user.role === "client" ? "/cliente" : next || "/admin");
 }
 
 export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
+  cookieStore.delete(PREVIEW_COOKIE);
   redirect("/admin/login");
 }

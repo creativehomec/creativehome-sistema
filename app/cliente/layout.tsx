@@ -1,0 +1,66 @@
+import Link from "next/link";
+import { cookies } from "next/headers";
+import { BrandLogo } from "@/components/BrandLogo";
+import { logout } from "@/app/admin/login/actions";
+import { PREVIEW_COOKIE } from "@/lib/clientPortal";
+import { getCurrentSession } from "@/lib/session";
+import { PortalNav } from "./PortalNav";
+import { brand } from "@/lib/brand";
+
+export const metadata = {
+  title: `Portal do cliente — ${brand.name}`,
+  manifest: "/cliente/manifest.webmanifest",
+};
+
+export default async function ClienteLayout({ children }: { children: React.ReactNode }) {
+  // Cookie sozinho não basta: um cliente que entra num navegador onde o admin
+  // usou a prévia veria a faixa da equipe e ficaria sem o botão Sair.
+  const role = (await getCurrentSession())?.role;
+  const preview = Boolean(role && role !== "client" && (await cookies()).get(PREVIEW_COOKIE)?.value);
+
+  return (
+    <div
+      // Gutter único do portal: 1,25rem, ou a área segura do iPhone (notch,
+      // laterais em paisagem) quando ela for maior. O carrossel de arquivos
+      // usa a mesma variável pra sangrar até a borda sem passar dela.
+      style={{ "--gutter": "max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right))" } as React.CSSProperties}
+      className="min-h-svh bg-[var(--brand-cream)] text-[var(--brand-ink)] selection:bg-[var(--brand-olive)] selection:text-[var(--brand-cream)]"
+    >
+      {preview ? (
+        <div className="flex items-center justify-between gap-3 bg-[var(--brand-ink)] px-[var(--gutter)] pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm text-[var(--brand-cream)]">
+          <span>Visualização do portal como o cliente o vê. O que você fizer aqui fica registrado como da equipe.</span>
+          <span className="flex shrink-0 items-center gap-4">
+            <Link href="/cliente/escolher" className="whitespace-nowrap font-semibold underline underline-offset-4">
+              Trocar cliente
+            </Link>
+            <Link href="/cliente/previa?sair=1" className="whitespace-nowrap font-semibold underline underline-offset-4">
+              Voltar ao painel
+            </Link>
+          </span>
+        </div>
+      ) : null}
+
+      <header className={`mx-auto flex max-w-xl items-center justify-between px-[var(--gutter)] md:pt-8 ${preview ? "pt-5" : "pt-[max(1.25rem,env(safe-area-inset-top))]"}`}>
+        <BrandLogo className="h-5 w-auto" />
+        {preview ? null : (
+          <form action={logout}>
+            <button className="min-h-11 px-1 text-sm text-[var(--brand-muted)] underline-offset-4 hover:text-[var(--brand-ink)] hover:underline">
+              Sair
+            </button>
+          </form>
+        )}
+      </header>
+
+      <main className="mx-auto max-w-xl px-[var(--gutter)] pb-[calc(7rem+env(safe-area-inset-bottom))] pt-6 md:pb-16">
+        <div className="mb-6 hidden md:block">
+          <PortalNav />
+        </div>
+        {children}
+      </main>
+
+      <div className="md:hidden">
+        <PortalNav />
+      </div>
+    </div>
+  );
+}
