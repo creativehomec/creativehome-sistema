@@ -1,37 +1,9 @@
 "use client";
 
-import {
-  Briefcase,
-  CalendarClock,
-  Clapperboard,
-  Images,
-  Kanban,
-  Library,
-  PenLine,
-  Receipt,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
 import Link from "next/link";
 import { Accordion } from "@/components/Accordion";
+import { visibleNavItems } from "@/components/admin/adminNavItems";
 import type { FeatureKey } from "@/lib/features";
-
-const ACTIONS: {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  /** Aparece se qualquer uma dessas áreas estiver liberada. */
-  features: FeatureKey[];
-}[] = [
-  { href: "/admin/guias", label: "Guia de Captação", icon: Clapperboard, features: ["guias"] },
-  { href: "/admin/orcamentos", label: "Orçamento", icon: Receipt, features: ["orcamentos"] },
-  { href: "/admin/biblioteca", label: "Biblioteca", icon: Library, features: ["biblioteca"] },
-  { href: "/admin/galerias", label: "Galeria do cliente", icon: Images, features: ["galerias"] },
-  { href: "/admin/backlog", label: "Entregas", icon: Kanban, features: ["backlog"] },
-  { href: "/admin/clientes", label: "Clientes", icon: Briefcase, features: ["clientes", "financeiro"] },
-  { href: "/admin/agenda", label: "Minha Agenda", icon: CalendarClock, features: ["agenda"] },
-  { href: "/admin/lettering", label: "Lettering", icon: PenLine, features: ["lettering"] },
-];
 
 export function AdminActionsMenu({
   isAdmin = false,
@@ -44,12 +16,7 @@ export function AdminActionsMenu({
   /** Aberto no desktop, recolhido no mobile pra não empurrar as tarefas. */
   defaultOpen?: boolean;
 }) {
-  const actions = ACTIONS.filter((action) =>
-    action.features.some((key) => features.includes(key))
-  );
-  if (isAdmin) {
-    actions.push({ href: "/admin/usuarios", label: "Usuários", icon: Users, features: [] });
-  }
+  const actions = visibleNavItems(features, isAdmin);
 
   return (
     <Accordion
