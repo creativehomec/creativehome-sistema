@@ -1,6 +1,7 @@
-import { ChevronRight, Home } from "lucide-react";
+import { ChevronLeft, Home } from "lucide-react";
 import Link from "next/link";
 import { logout } from "@/app/admin/login/actions";
+import { AdminNavMenu } from "@/components/admin/AdminNavMenu";
 import { LiveRefresh } from "@/components/admin/LiveRefresh";
 import { NotificationBell } from "@/components/admin/NotificationBell";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -8,7 +9,7 @@ import {
   countUnreadNotifications,
   listNotifications,
 } from "@/lib/notifications";
-import { getCurrentSession } from "@/lib/session";
+import { getAllowedFeatures, getCurrentSession } from "@/lib/session";
 
 export type BreadcrumbItem = {
   label: string;
@@ -38,6 +39,7 @@ export async function AdminHeader({
   // A campainha é buscada aqui, e não em cada página, pra aparecer igual em
   // todo o admin sem repetir a consulta em dez lugares.
   const session = await getCurrentSession();
+  const features = await getAllowedFeatures();
   const [notifications, unreadCount] = session
     ? await Promise.all([
         listNotifications(session.userId),
@@ -100,44 +102,37 @@ export async function AdminHeader({
             repetindo o mesmo nome embaixo só ocupava espaço. */}
         <div className="flex items-center justify-between gap-4">
           {trail?.length ? (
-            <nav aria-label="Breadcrumb" className="min-w-0">
-              <ol className="flex flex-wrap items-center gap-1 text-[13px]">
-                {trail.map((item, index) => (
-                  <li key={item.label} className="flex items-center gap-1">
-                    {index > 0 ? (
-                      <ChevronRight
-                        aria-hidden="true"
-                        className="size-3.5 text-neutral-500"
-                      />
-                    ) : null}
-                    {item.href ? (
-                      <Link
-                        href={item.href}
-                        className={`flex items-center rounded-md bg-neutral-100 px-2.5 text-neutral-600 transition-transform hover:bg-neutral-200 active:scale-[0.97] pointer-coarse:min-h-11 py-1 ${FOCUS_RING}`}
-                      >
-                        {item.label}
-                      </Link>
-                    ) : (
-                      <span
-                        aria-current="page"
-                        className="flex items-center rounded-md bg-neutral-100 px-2.5 py-1 font-medium text-neutral-900 pointer-coarse:min-h-11"
-                      >
-                        {item.label}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </nav>
+            // O menu substitui a trilha: o botão nomeia a página atual e abre
+            // as áreas. Só páginas fundas (Guias > um guia) ganham o "voltar"
+            // para o nível de cima, que o menu não cobre.
+            <div className="flex min-w-0 items-center gap-2">
+              {trail.length > 2 && trail[trail.length - 2].href ? (
+                <Link
+                  href={trail[trail.length - 2].href!}
+                  aria-label={`Voltar para ${trail[trail.length - 2].label}`}
+                  className={`flex shrink-0 items-center gap-0.5 rounded-md bg-neutral-100 py-1 pr-2.5 pl-1.5 text-[13px] text-neutral-600 transition-transform hover:bg-neutral-200 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
+                >
+                  <ChevronLeft aria-hidden="true" className="size-3.5" />
+                  {trail[trail.length - 2].label}
+                </Link>
+              ) : null}
+              <AdminNavMenu
+                current={trail[trail.length - 1].label}
+                features={features}
+                isAdmin={session?.role === "admin"}
+              />
+            </div>
           ) : (
             <h1 className="min-w-0 truncate text-xl leading-tight font-semibold tracking-tight text-neutral-900">
               {title}
             </h1>
           )}
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {username ? (
-              <span className="text-sm text-neutral-500">{username}</span>
+              <span className="hidden text-sm text-neutral-500 sm:inline">
+                {username}
+              </span>
             ) : null}
             {session ? (
               <NotificationBell
