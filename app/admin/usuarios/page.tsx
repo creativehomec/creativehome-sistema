@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { listGalleryClients } from "@/lib/galleries";
 import { listUsers } from "@/lib/users";
 import { listPendingInvites } from "@/lib/invites";
 import { requireAdmin } from "@/lib/session";
@@ -44,10 +45,11 @@ function RoleSelect({ defaultValue }: { defaultValue: string }) {
 
 export default async function UsersPage() {
   const session = await requireAdmin();
-  const [users, invites, origin] = await Promise.all([
+  const [users, invites, origin, clients] = await Promise.all([
     listUsers(),
     listPendingInvites(),
     getSiteOrigin(),
+    listGalleryClients(),
   ]);
 
   const currentUsername = users.find((user) => user.id === session.userId)?.username;
@@ -187,8 +189,45 @@ export default async function UsersPage() {
                           ))}
                         </div>
                       </fieldset>
+                      <fieldset className="group-has-[option[value=admin]:checked]:hidden">
+                        <legend className="mb-2 text-xs font-medium text-neutral-600">
+                          Clientes que pode ver (Clientes, Galerias e Entregas)
+                        </legend>
+                        <label className="mb-2 flex items-center gap-2 text-sm text-neutral-700 pointer-coarse:min-h-11">
+                          <input
+                            type="checkbox"
+                            name="clients_all"
+                            defaultChecked={user.allowed_client_ids === null}
+                            className="size-3.5 accent-neutral-900"
+                          />
+                          Todos os clientes
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {clients.map((client) => (
+                            <label
+                              key={client.id}
+                              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-500 transition-colors select-none has-[:checked]:border-neutral-400 has-[:checked]:bg-neutral-100 has-[:checked]:text-neutral-900 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-neutral-900 pointer-coarse:min-h-11"
+                            >
+                              <input
+                                type="checkbox"
+                                name="clients"
+                                value={client.id}
+                                defaultChecked={
+                                  user.allowed_client_ids === null ||
+                                  user.allowed_client_ids.includes(client.id)
+                                }
+                                className="size-3.5 accent-neutral-900"
+                              />
+                              {client.name}
+                            </label>
+                          ))}
+                        </div>
+                        <p className="mt-1.5 text-xs text-neutral-500">
+                          Com &quot;Todos os clientes&quot; marcado, a lista abaixo é ignorada.
+                        </p>
+                      </fieldset>
                       <p className="hidden text-xs text-neutral-500 group-has-[option[value=admin]:checked]:block">
-                        Admin vê todas as áreas e gerencia usuários.
+                        Admin vê todas as áreas e todos os clientes, e gerencia usuários.
                       </p>
 
                       <div className="flex items-center justify-between gap-3 pt-1">

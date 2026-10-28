@@ -15,6 +15,7 @@ import {
   getCurrentUsername,
 } from "@/lib/session";
 import { getUserCalendarAccount } from "@/lib/userCalendars";
+import { getCurrentClientScope } from "@/lib/clientAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +23,13 @@ export default async function AdminHub() {
   // A sessão vem do cookie (sem rede), então já dá pra buscar a conta da
   // agenda junto com o resto em vez de depois.
   const session = await getCurrentSession();
+  const clientScope = await getCurrentClientScope();
   const [username, features, { todos, users }, upcoming, account] =
     await Promise.all([
       getCurrentUsername(),
       getAllowedFeatures(),
       listDailyTodos(),
-      listUpcomingPosts(),
+      listUpcomingPosts(clientScope),
       // Quem não conectou agenda não vê o bloco de hoje.
       session ? getUserCalendarAccount(session.userId) : null,
     ]);

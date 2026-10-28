@@ -80,7 +80,25 @@ function normalizeText(value: unknown): string | null {
 
 // ---------------------------------------------------------------- leitura
 
-export async function getBacklogBoard(): Promise<BacklogBoard> {
+/** Só o `client_id` do card — pra checar acesso antes de mexer no valor dele. */
+export async function getBacklogCardClientId(id: string): Promise<string | null> {
+  const { data, error } = await getSupabaseServerClient()
+    .from("backlog_cards")
+    .select("client_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.client_id as string | undefined) ?? null;
+}
+
+/**
+ * `clientScope` limita o quadro aos clientes liberados para quem está logado;
+ * `null` = sem restrição. Restrito, os cards sem cliente (trabalho interno)
+ * também ficam escondidos.
+ */
+export async function getBacklogBoard(
+  clientScope: string[] | null = null
+): Promise<BacklogBoard> {
   const supabase = getSupabaseServerClient();
 
   // Uma rodada só. Antes eram quatro em série (colunas, cards, responsáveis,
@@ -114,10 +132,16 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
       .from("backlog_card_activity")
       .select("*")
       .order("created_at", { ascending: false }),
-    supabase
-      .from("gallery_clients")
-      .select("id, name, payment_day, color")
-      .order("name"),
+    clientScope === null
+      ? supabase
+          .from("gallery_clients")
+          .select("id, name, payment_day, color")
+          .order("name")
+      : supabase
+          .from("gallery_clients")
+          .select("id, name, payment_day, color")
+          .in("id", clientScope)
+          .order("name"),
     supabase.from("guides").select("id, title").order("title"),
     supabase
       .from("users")
@@ -147,7 +171,12 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
   const rawCards = ((cardsResult.data ?? []) as Omit<
     BacklogCard,
     "assignee_ids"
-  >[]).filter((card) => columnIds.has(card.column_id));
+  >[]).filter(
+    (card) =>
+      columnIds.has(card.column_id) &&
+      (clientScope === null ||
+        (card.client_id !== null && clientScope.includes(card.client_id)))
+  );
   const cardIds = new Set(rawCards.map((card) => card.id));
 
   const assigneesByCard = new Map<string, string[]>();

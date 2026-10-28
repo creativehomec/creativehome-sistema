@@ -8,6 +8,7 @@ import {
 } from "@/lib/billing";
 import { getAllowedFeatures, getCurrentUsername } from "@/lib/session";
 import { formatBRL } from "@/lib/billingTypes";
+import { getCurrentClientScope } from "@/lib/clientAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -17,15 +18,16 @@ export default async function ResumoPage({
   searchParams: Promise<{ ano?: string; cliente?: string }>;
 }) {
   const params = await searchParams;
+  const clientScope = await getCurrentClientScope();
   const [years, overdue, username, features] = await Promise.all([
     listInvoiceYears(),
-    getOverdueByClient(),
+    getOverdueByClient(clientScope),
     getCurrentUsername(),
     getAllowedFeatures(),
   ]);
 
   const year = Number(params.ano) || years[0] || new Date().getFullYear();
-  const totals = await getYearTotals(year);
+  const totals = await getYearTotals(year, clientScope);
 
   // O filtro de cliente é um recorte da mesma consulta: as barras por mês
   // passam a ser as daquele cliente em vez do somatório de todos.
