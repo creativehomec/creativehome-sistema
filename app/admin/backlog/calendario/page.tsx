@@ -5,13 +5,14 @@ import { getCurrentUsername } from "@/lib/session";
 import { getCurrentSession } from "@/lib/session";
 import { getUserCalendarAccount } from "@/lib/userCalendars";
 import { BacklogCalendarSync } from "@/components/admin/BacklogCalendarSync";
+import { getCurrentClientScope } from "@/lib/clientAccess";
 import { Calendar } from "./Calendar";
 
 export const dynamic = "force-dynamic";
 
 export default async function BacklogCalendarPage() {
   const [board, username, session] = await Promise.all([
-    getBacklogBoard(),
+    getBacklogBoard(await getCurrentClientScope()),
     getCurrentUsername(),
     getCurrentSession(),
   ]);

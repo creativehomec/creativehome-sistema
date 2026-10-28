@@ -4,6 +4,8 @@ import { getConnectedGoogleAccount } from "@/lib/googleDrive";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { getCurrentUsername } from "@/lib/session";
+import { getCurrentClientScope } from "@/lib/clientAccess";
+
 import {
   createGalleryClientAction,
   deleteGalleryClientAction,
@@ -26,7 +28,7 @@ export default async function GalleryClientsPage({
   const driveConnected = params.drive_connected === "1";
 
   const [clients, username, googleAccount] = await Promise.all([
-    listGalleryClients(),
+    listGalleryClients({ clientScope: await getCurrentClientScope() }),
     getCurrentUsername(),
     getConnectedGoogleAccount(),
   ]);
