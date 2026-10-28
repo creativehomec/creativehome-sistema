@@ -110,7 +110,7 @@ export async function AdminHeader({
                 <Link
                   href={trail[trail.length - 2].href!}
                   aria-label={`Voltar para ${trail[trail.length - 2].label}`}
-                  className={`flex items-center gap-0.5 rounded-md bg-neutral-100 py-1 pr-2.5 pl-1.5 text-[13px] text-neutral-600 transition-transform hover:bg-neutral-200 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
+                  className={`flex shrink-0 items-center gap-0.5 rounded-md bg-neutral-100 py-1 pr-2.5 pl-1.5 text-[13px] text-neutral-600 transition-transform hover:bg-neutral-200 active:scale-[0.97] pointer-coarse:min-h-11 ${FOCUS_RING}`}
                 >
                   <ChevronLeft aria-hidden="true" className="size-3.5" />
                   {trail[trail.length - 2].label}
@@ -128,9 +128,11 @@ export async function AdminHeader({
             </h1>
           )}
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {username ? (
-              <span className="text-sm text-neutral-500">{username}</span>
+              <span className="hidden text-sm text-neutral-500 sm:inline">
+                {username}
+              </span>
             ) : null}
             {session ? (
               <NotificationBell
