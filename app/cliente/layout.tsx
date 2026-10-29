@@ -24,7 +24,7 @@ export default async function ClienteLayout({ children }: { children: React.Reac
       // laterais em paisagem) quando ela for maior. O carrossel de arquivos
       // usa a mesma variável pra sangrar até a borda sem passar dela.
       style={{ "--gutter": "max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right))" } as React.CSSProperties}
-      className="min-h-svh bg-[var(--brand-cream)] text-[var(--brand-ink)] selection:bg-[var(--brand-olive)] selection:text-[var(--brand-cream)]"
+      className="min-h-svh overflow-x-clip bg-[var(--brand-cream)] text-[var(--brand-ink)] selection:bg-[var(--brand-olive)] selection:text-[var(--brand-cream)]"
     >
       {preview ? (
         <div className="flex items-center justify-between gap-3 bg-[var(--brand-ink)] px-[var(--gutter)] pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm text-[var(--brand-cream)]">

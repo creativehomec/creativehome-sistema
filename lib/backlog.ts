@@ -2,6 +2,7 @@ import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   BACKUP_QUESTION,
+  isApprovalColumn,
   normalizeBacklogFormat,
   parseBacklogTags,
   shouldAskBackupQuestion,
@@ -435,6 +436,30 @@ export async function setBacklogCardAssignees(
 }
 
 /**
+ * Quem revisa tudo que chega na Aprovação. Entram somados aos responsáveis
+ * que o card já tinha, e por isso recebem o aviso de "movida" junto.
+ */
+// ponytail: usernames fixos; vira configuração na tela de Usuários se a equipe mudar muito.
+const APPROVAL_REVIEWERS = ["nicoly caroliny", "marcussantos"];
+
+async function addApprovalReviewers(cardId: string) {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("id")
+    .in("username", APPROVAL_REVIEWERS);
+  if (error) throw error;
+  if (!data?.length) return;
+  const { error: upsertError } = await supabase
+    .from("backlog_card_assignees")
+    .upsert(
+      data.map((user) => ({ card_id: cardId, user_id: user.id as string })),
+      { onConflict: "card_id,user_id", ignoreDuplicates: true }
+    );
+  if (upsertError) throw upsertError;
+}
+
+/**
  * Título e responsável do card — usados pelas notificações, e pra saber se a
  * atribuição mudou antes de avisar alguém.
  */
@@ -802,6 +827,8 @@ export async function moveBacklogCard(params: {
     message: `Moveu de "${fromName}" para "${toName}"`,
   });
 
+  if (isApprovalColumn(toName)) await addApprovalReviewers(params.cardId);
+
   return {
     prompt: buildMovePrompt({
       columns: (columns ?? []) as BacklogColumn[],
@@ -890,6 +917,23 @@ export async function setBacklogCardApproved(params: {
       updated_at: new Date().toISOString(),
     })
     .eq("id", params.cardId);
+  if (error) throw error;
+}
+
+/** A equipe registra o ajuste em nome do cliente: tira a aprovação e guarda o pedido. */
+export async function setBacklogCardChangesRequested(cardId: string, feedback: string) {
+  const supabase = getSupabaseServerClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("backlog_cards")
+    .update({
+      approved_at: null,
+      approved_by: null,
+      changes_requested_at: now,
+      client_feedback: feedback,
+      updated_at: now,
+    })
+    .eq("id", cardId);
   if (error) throw error;
 }
 
