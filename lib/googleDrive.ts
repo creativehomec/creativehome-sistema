@@ -220,6 +220,23 @@ export function extractDriveFolderId(url: string): string | null {
   return null;
 }
 
+/** Tipo de um arquivo ou pasta do Drive. Null se não existe ou a conta
+ * conectada não enxerga. */
+export async function getDriveFileMeta(
+  fileId: string
+): Promise<{ id: string; name: string; mimeType: string } | null> {
+  const accessToken = await getFreshAccessToken();
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType&supportsAllDrives=true`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!response.ok) return null;
+  return response.json();
+}
+
+export const isDriveFolderMimeType = (mimeType: string) =>
+  mimeType === DRIVE_FOLDER_MIME_TYPE;
+
 export interface DriveMediaFile {
   id: string;
   name: string;
