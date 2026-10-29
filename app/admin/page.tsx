@@ -9,6 +9,8 @@ import {
 } from "@/components/admin/TodayAgenda";
 import { listDailyTodos } from "@/lib/dailyTodos";
 import { listUpcomingPosts } from "@/lib/upcomingPosts";
+import { ApprovalQueue } from "@/components/admin/ApprovalQueue";
+import { APPROVAL_DASHBOARD_USERS, listApprovalQueue } from "@/lib/approvalQueue";
 import {
   getAllowedFeatures,
   getCurrentSession,
@@ -24,14 +26,17 @@ export default async function AdminHub() {
   // agenda junto com o resto em vez de depois.
   const session = await getCurrentSession();
   const clientScope = await getCurrentClientScope();
-  const [username, features, { todos, users }, upcoming, account] =
+  const username = await getCurrentUsername();
+  const [features, { todos, users }, upcoming, account, approvals] =
     await Promise.all([
-      getCurrentUsername(),
       getAllowedFeatures(),
       listDailyTodos(),
       listUpcomingPosts(clientScope),
       // Quem não conectou agenda não vê o bloco de hoje.
       session ? getUserCalendarAccount(session.userId) : null,
+      username && APPROVAL_DASHBOARD_USERS.includes(username)
+        ? listApprovalQueue(clientScope)
+        : null,
     ]);
 
   // Serve pra pintar a tarefa recém-criada já com o responsável certo, antes
@@ -91,16 +96,19 @@ export default async function AdminHub() {
           </div>
         </div>
 
-        <section
-          aria-labelledby="tarefas-titulo"
-          className="rounded-lg border border-neutral-200 bg-white p-4"
-        >
-          <DailyTodoList
-            todos={todos}
-            users={users}
-            currentUser={currentUser}
-          />
-        </section>
+        <div className="space-y-6">
+          {approvals ? <ApprovalQueue items={approvals} /> : null}
+          <section
+            aria-labelledby="tarefas-titulo"
+            className="rounded-lg border border-neutral-200 bg-white p-4"
+          >
+            <DailyTodoList
+              todos={todos}
+              users={users}
+              currentUser={currentUser}
+            />
+          </section>
+        </div>
       </div>
     </div>
   );
