@@ -26,6 +26,7 @@ import {
   renameBacklogChecklistItemAction,
   setBacklogChecklistItemDoneAction,
 } from "@/app/admin/kanbanActions";
+import { InstagramSection } from "@/components/admin/InstagramSection";
 
 const inputClass =
   "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none";
@@ -586,6 +587,8 @@ export function BacklogCardDrawer({
 
           {/* Coluna da direita: checklist, atividade e comentários. */}
           <div className="flex flex-col gap-4 border-neutral-200 sm:min-h-0 sm:overflow-y-auto sm:border-l sm:pl-5">
+            <InstagramSection card={card} />
+
             <ChecklistSection
               cardId={card.id}
               items={checklist.filter((item) => item.card_id === card.id)}

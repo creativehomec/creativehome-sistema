@@ -9,6 +9,7 @@ const TABS: { href: string; label: string; feature: FeatureKey }[] = [
   { href: "/admin/clientes/faturamento", label: "Faturamento", feature: "financeiro" },
   { href: "/admin/clientes/resumo", label: "Resumo", feature: "financeiro" },
   { href: "/admin/clientes/cadastro", label: "Cadastro", feature: "clientes" },
+  { href: "/admin/clientes/instagram", label: "Instagram", feature: "clientes" },
 ];
 
 /**
