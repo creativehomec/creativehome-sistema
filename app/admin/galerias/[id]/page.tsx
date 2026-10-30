@@ -222,9 +222,12 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
               </p>
             ) : (
               <p className="mb-3 text-sm text-neutral-500">
-                Cole o link da pasta do Drive do cliente (precisa estar
-                compartilhada, no mínimo como visualizador, com a conta
-                Google conectada acima).
+                Cole o link da pasta do Drive do cliente. Ela precisa estar
+                compartilhada, no mínimo como leitor, com{" "}
+                <code className="select-all rounded bg-neutral-100 px-1 py-0.5 text-xs text-neutral-900">
+                  {googleAccount.email}
+                </code>
+                .
               </p>
             )}
 
