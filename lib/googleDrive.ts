@@ -1,4 +1,5 @@
 import "server-only";
+import { createSign } from "node:crypto";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
@@ -36,6 +37,59 @@ function getEnv() {
   }
 
   return { clientId, clientSecret, redirectUri };
+}
+
+/**
+ * Conta de serviço (o "robô" do Google). Com ela o sistema lê as pastas que
+ * forem compartilhadas com o e-mail do robô, sem ninguém fazer login. Substitui
+ * o OAuth abaixo, cujo refresh token expira a cada 7 dias enquanto o projeto do
+ * Drive estiver em modo de teste — e publicar exigiria a auditoria CASA, paga.
+ * Sem a variável, o OAuth antigo continua valendo.
+ */
+interface ServiceAccount {
+  client_email: string;
+  private_key: string;
+}
+
+function getServiceAccount(): ServiceAccount | null {
+  const raw = process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON;
+  if (!raw) return null;
+  const parsed = JSON.parse(raw) as ServiceAccount;
+  if (!parsed.client_email || !parsed.private_key) {
+    throw new Error(
+      "GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON inválida: falta client_email ou private_key."
+    );
+  }
+  return parsed;
+}
+
+async function requestServiceAccountToken(account: ServiceAccount) {
+  const now = Math.floor(Date.now() / 1000);
+  const encode = (value: object) =>
+    Buffer.from(JSON.stringify(value)).toString("base64url");
+  const unsigned = `${encode({ alg: "RS256", typ: "JWT" })}.${encode({
+    iss: account.client_email,
+    scope: OAUTH_SCOPES.join(" "),
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  })}`;
+  const signature = createSign("RSA-SHA256")
+    .update(unsigned)
+    .sign(account.private_key, "base64url");
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${unsigned}.${signature}`,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Falha ao autenticar a conta de serviço do Drive: ${await response.text()}`);
+  }
+  return (await response.json()) as GoogleTokenResponse;
 }
 
 export function buildGoogleAuthUrl(): string {
@@ -115,7 +169,12 @@ export async function connectGoogleAccount(code: string): Promise<void> {
 
 export async function getConnectedGoogleAccount(): Promise<{
   email: string;
+  /** true quando é a conta de serviço: não tem login nem "Desconectar", a
+   * pasta só precisa ser compartilhada com este e-mail. */
+  serviceAccount?: boolean;
 } | null> {
+  const account = getServiceAccount();
+  if (account) return { email: account.client_email, serviceAccount: true };
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from("google_oauth_tokens")
@@ -152,6 +211,16 @@ let accessTokenInFlight: Promise<string> | null = null;
 const TOKEN_EXPIRY_MARGIN_MS = 60_000;
 
 async function requestAccessToken(): Promise<string> {
+  const account = getServiceAccount();
+  if (account) {
+    const tokens = await requestServiceAccountToken(account);
+    cachedAccessToken = {
+      token: tokens.access_token,
+      expiresAt: Date.now() + tokens.expires_in * 1000 - TOKEN_EXPIRY_MARGIN_MS,
+    };
+    return tokens.access_token;
+  }
+
   const { clientId, clientSecret } = getEnv();
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
