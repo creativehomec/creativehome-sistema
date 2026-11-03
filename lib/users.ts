@@ -11,6 +11,8 @@ export interface User {
   role: UserRole;
   /** Áreas desligadas por um admin — ver lib/features.ts. */
   disabled_features: string[];
+  /** Clientes liberados em Clientes, Galerias e Entregas. `null` = todos. */
+  allowed_client_ids: string[] | null;
   /** Só para role "client": o cliente a que este acesso pertence. */
   client_id: string | null;
   /** Nome da pessoa (logins de cliente) e função, ex.: "Gestor de tráfego". */
@@ -178,6 +180,7 @@ export async function updateUser(
     email: string;
     role: UserRole;
     disabledFeatures: string[];
+    allowedClientIds?: string[] | null;
     password?: string;
   }
 ): Promise<PublicUser> {
@@ -188,6 +191,9 @@ export async function updateUser(
     role: fields.role,
     disabled_features: fields.disabledFeatures,
   };
+  if (fields.allowedClientIds !== undefined) {
+    update.allowed_client_ids = fields.allowedClientIds;
+  }
   if (fields.password) {
     update.password_hash = await hashPassword(fields.password);
   }

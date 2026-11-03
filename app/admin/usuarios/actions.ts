@@ -38,11 +38,16 @@ export async function updateUserAction(formData: FormData) {
     (key) => !enabled.has(key)
   );
 
+  // "Todos os clientes" marcado = sem restrição; senão, só os marcados.
+  const allowedClientIds =
+    formData.get("clients_all") === "on" ? null : formData.getAll("clients").map(String);
+
   await updateUser(id, {
     username,
     email,
     role,
     disabledFeatures,
+    allowedClientIds,
     password: password || undefined,
   });
   revalidatePath("/admin/usuarios");

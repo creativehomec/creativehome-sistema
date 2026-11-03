@@ -5,6 +5,7 @@ import {
   type GalleryFolderNode,
 } from "@/lib/galleries";
 import { getConnectedGoogleAccount } from "@/lib/googleDrive";
+import { assertClientAllowed, getCurrentClientScope } from "@/lib/clientAccess";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Accordion } from "@/components/Accordion";
 import { DeleteButton } from "@/components/admin/DeleteButton";
@@ -90,6 +91,12 @@ function FolderList({
 
 export default async function GalleryClientPage({ params }: { params: Params }) {
   const { id } = await params;
+  try {
+    assertClientAllowed(await getCurrentClientScope(), id);
+  } catch {
+    notFound();
+  }
+
   const [client, username, googleAccount] = await Promise.all([
     getGalleryClientWithImages(id),
     getCurrentUsername(),
@@ -215,9 +222,12 @@ export default async function GalleryClientPage({ params }: { params: Params }) 
               </p>
             ) : (
               <p className="mb-3 text-sm text-neutral-500">
-                Cole o link da pasta do Drive do cliente (precisa estar
-                compartilhada, no mínimo como visualizador, com a conta
-                Google conectada acima).
+                Cole o link da pasta do Drive do cliente. Ela precisa estar
+                compartilhada, no mínimo como leitor, com{" "}
+                <code className="select-all rounded bg-neutral-100 px-1 py-0.5 text-xs text-neutral-900">
+                  {googleAccount.email}
+                </code>
+                .
               </p>
             )}
 

@@ -26,6 +26,7 @@ import {
   readBacklogCardInput,
   reorderBacklogColumns,
   setBacklogCardApproved,
+  setBacklogCardChangesRequested,
   setBacklogCardColumn,
   setBacklogCardPayment,
   setBacklogCardPostDate,
@@ -46,6 +47,8 @@ const BOARD_PATH = "/admin/backlog";
 
 const KANBAN_PATHS = [
   BOARD_PATH,
+  // Painel: o bloco Aprovação conta e aprova cards.
+  "/admin",
   "/admin/backlog/calendario",
   "/admin/clientes/faturamento",
   "/admin/clientes/resumo",
@@ -278,6 +281,34 @@ export async function setBacklogCardApprovedAction(
     kind: "card_approved",
     title: approved ? "Entrega aprovada" : "Aprovação removida",
     body: brief.title,
+    link: BOARD_PATH,
+    entityId: cardId,
+  });
+  revalidateBacklog();
+}
+
+/** Reprovar pelo Painel: o ajuste vai pro card e pra quem é responsável. */
+export async function requestBacklogCardChangesAction(
+  cardId: string,
+  feedback: string
+) {
+  const value = feedback.trim();
+  if (!value) return;
+  const session = await getCurrentSession();
+  await setBacklogCardChangesRequested(cardId, value);
+  await createBacklogActivity({
+    cardId,
+    authorId: session?.userId ?? null,
+    kind: "note",
+    message: `Pediu ajuste: ${value}`,
+  });
+  const brief = await getBacklogCardBrief(cardId);
+  await notifyAssignees({
+    userIds: brief.assigneeIds,
+    actorId: session?.userId ?? null,
+    kind: "card_approved",
+    title: "Ajuste pedido",
+    body: `${brief.title}: ${value}`,
     link: BOARD_PATH,
     entityId: cardId,
   });

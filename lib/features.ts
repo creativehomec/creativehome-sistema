@@ -17,6 +17,7 @@ export const FEATURES = [
   { key: "financeiro", label: "Financeiro (faturamento e resumo)" },
   { key: "agenda", label: "Minha Agenda" },
   { key: "lettering", label: "Lettering" },
+  { key: "referencias", label: "Mural de referências" },
   { key: "armazenamento", label: "Armazenamento" },
   { key: "area-do-cliente", label: "Área do cliente" },
 ] as const;

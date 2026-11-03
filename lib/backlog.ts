@@ -2,6 +2,7 @@ import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   BACKUP_QUESTION,
+  isApprovalColumn,
   normalizeBacklogFormat,
   parseBacklogTags,
   shouldAskBackupQuestion,
@@ -80,7 +81,25 @@ function normalizeText(value: unknown): string | null {
 
 // ---------------------------------------------------------------- leitura
 
-export async function getBacklogBoard(): Promise<BacklogBoard> {
+/** Só o `client_id` do card — pra checar acesso antes de mexer no valor dele. */
+export async function getBacklogCardClientId(id: string): Promise<string | null> {
+  const { data, error } = await getSupabaseServerClient()
+    .from("backlog_cards")
+    .select("client_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.client_id as string | undefined) ?? null;
+}
+
+/**
+ * `clientScope` limita o quadro aos clientes liberados para quem está logado;
+ * `null` = sem restrição. Restrito, os cards sem cliente (trabalho interno)
+ * também ficam escondidos.
+ */
+export async function getBacklogBoard(
+  clientScope: string[] | null = null
+): Promise<BacklogBoard> {
   const supabase = getSupabaseServerClient();
 
   // Uma rodada só. Antes eram quatro em série (colunas, cards, responsáveis,
@@ -114,10 +133,16 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
       .from("backlog_card_activity")
       .select("*")
       .order("created_at", { ascending: false }),
-    supabase
-      .from("gallery_clients")
-      .select("id, name, payment_day, color")
-      .order("name"),
+    clientScope === null
+      ? supabase
+          .from("gallery_clients")
+          .select("id, name, payment_day, color")
+          .order("name")
+      : supabase
+          .from("gallery_clients")
+          .select("id, name, payment_day, color")
+          .in("id", clientScope)
+          .order("name"),
     supabase.from("guides").select("id, title").order("title"),
     supabase
       .from("users")
@@ -147,7 +172,12 @@ export async function getBacklogBoard(): Promise<BacklogBoard> {
   const rawCards = ((cardsResult.data ?? []) as Omit<
     BacklogCard,
     "assignee_ids"
-  >[]).filter((card) => columnIds.has(card.column_id));
+  >[]).filter(
+    (card) =>
+      columnIds.has(card.column_id) &&
+      (clientScope === null ||
+        (card.client_id !== null && clientScope.includes(card.client_id)))
+  );
   const cardIds = new Set(rawCards.map((card) => card.id));
 
   const assigneesByCard = new Map<string, string[]>();
@@ -403,6 +433,30 @@ export async function setBacklogCardAssignees(
     .from("backlog_card_assignees")
     .insert(userIds.map((userId) => ({ card_id: cardId, user_id: userId })));
   if (error) throw error;
+}
+
+/**
+ * Quem revisa tudo que chega na Aprovação. Entram somados aos responsáveis
+ * que o card já tinha, e por isso recebem o aviso de "movida" junto.
+ */
+// ponytail: usernames fixos; vira configuração na tela de Usuários se a equipe mudar muito.
+const APPROVAL_REVIEWERS = ["nicoly caroliny", "marcussantos"];
+
+async function addApprovalReviewers(cardId: string) {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("id")
+    .in("username", APPROVAL_REVIEWERS);
+  if (error) throw error;
+  if (!data?.length) return;
+  const { error: upsertError } = await supabase
+    .from("backlog_card_assignees")
+    .upsert(
+      data.map((user) => ({ card_id: cardId, user_id: user.id as string })),
+      { onConflict: "card_id,user_id", ignoreDuplicates: true }
+    );
+  if (upsertError) throw upsertError;
 }
 
 /**
@@ -773,6 +827,8 @@ export async function moveBacklogCard(params: {
     message: `Moveu de "${fromName}" para "${toName}"`,
   });
 
+  if (isApprovalColumn(toName)) await addApprovalReviewers(params.cardId);
+
   return {
     prompt: buildMovePrompt({
       columns: (columns ?? []) as BacklogColumn[],
@@ -861,6 +917,23 @@ export async function setBacklogCardApproved(params: {
       updated_at: new Date().toISOString(),
     })
     .eq("id", params.cardId);
+  if (error) throw error;
+}
+
+/** A equipe registra o ajuste em nome do cliente: tira a aprovação e guarda o pedido. */
+export async function setBacklogCardChangesRequested(cardId: string, feedback: string) {
+  const supabase = getSupabaseServerClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("backlog_cards")
+    .update({
+      approved_at: null,
+      approved_by: null,
+      changes_requested_at: now,
+      client_feedback: feedback,
+      updated_at: now,
+    })
+    .eq("id", cardId);
   if (error) throw error;
 }
 

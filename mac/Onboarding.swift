@@ -1,4 +1,5 @@
 import Cocoa
+import UserNotifications
 import ServiceManagement
 
 /// Janela de boas-vindas: pede, numa tela só, tudo que o app precisa do macOS.
@@ -39,6 +40,7 @@ final class Onboarding: NSObject {
     private var linhas: [Linha] = []
     /// O macOS só pergunta pelos discos quando alguém tenta abri-los; só tentamos depois do toque.
     private var discosTocado = false
+    private var notificacao: UNAuthorizationStatus = .notDetermined
 
     private static func abrirAjustes(_ url: String) {
         if let u = URL(string: url) { NSWorkspace.shared.open(u) }
@@ -47,6 +49,35 @@ final class Onboarding: NSObject {
     override init() {
         super.init()
         linhas = [
+            Linha(
+                "Notificações",
+                "Avisa quando chega algo novo: aprovação de cliente, mensagem, cobrança.",
+                simbolo: "bell.badge",
+                verificar: { [weak self] fim in
+                    UNUserNotificationCenter.current().getNotificationSettings { s in
+                        DispatchQueue.main.async {
+                            self?.notificacao = s.authorizationStatus
+                            switch s.authorizationStatus {
+                            case .authorized, .provisional:
+                                fim(Estado(ok: true, texto: "Pronto", botao: nil))
+                            case .denied:
+                                fim(Estado(ok: false, texto: "Bloqueado. Libere nos Ajustes do Mac.", botao: "Abrir ajustes"))
+                            default:
+                                fim(Estado(ok: false, texto: "Ainda não permitido", botao: "Permitir"))
+                            }
+                        }
+                    }
+                },
+                agir: { [weak self] depois in
+                    if self?.notificacao == .notDetermined {
+                        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
+                            DispatchQueue.main.async { depois() }
+                        }
+                    } else {
+                        Onboarding.abrirAjustes("x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+                        depois()
+                    }
+                }),
             Linha(
                 "Discos e SSDs",
                 "Lê quanto espaço cada disco tem e quais pastas estão nele, pra avisar quando o espaço acabar ou algo só existir num lugar.",
@@ -165,7 +196,7 @@ final class Onboarding: NSObject {
 
         pilha.addArrangedSubview(texto("Bem-vindo ao CreativeHome", .systemFont(ofSize: 22, weight: .semibold)))
         pilha.addArrangedSubview(
-            texto("O Mac vai pedir duas permissões. Leva um minuto e você só faz isso uma vez.", .systemFont(ofSize: 13), .secondaryLabelColor))
+            texto("O Mac vai pedir três permissões. Leva um minuto e você só faz isso uma vez.", .systemFont(ofSize: 13), .secondaryLabelColor))
 
         for linha in linhas {
             linha.icone.image = NSImage(systemSymbolName: linha.simbolo, accessibilityDescription: linha.titulo)

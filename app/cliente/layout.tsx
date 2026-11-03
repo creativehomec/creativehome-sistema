@@ -43,7 +43,7 @@ export default async function ClienteLayout({ children }: { children: React.Reac
           "--p-glass": "rgb(58 31 20 / 0.5)",
         } as React.CSSProperties
       }
-      className="relative isolate min-h-svh bg-[var(--brand-ink)] text-[var(--p-text)] selection:bg-[var(--brand-olive)] selection:text-[var(--brand-cream)]"
+      className="relative isolate min-h-svh overflow-x-clip bg-[var(--brand-ink)] text-[var(--p-text)] selection:bg-[var(--brand-olive)] selection:text-[var(--brand-cream)]"
     >
       {/* O degradê vive numa camada fixa do tamanho da tela. Antes ele era o
           fundo da página inteira: ao abrir um dropdown a página crescia, o

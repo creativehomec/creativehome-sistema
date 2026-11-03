@@ -12,6 +12,10 @@ import { getCurrentSession } from "@/lib/session";
  * prompt e pedir `{ type: "json_object" }`.
  */
 export const MODELO_ROTEIRO = process.env.ROTEIROS_AI_MODEL || "gpt-4o";
+export const MODELO_TRIAGEM =
+  process.env.ROTEIROS_AI_MODEL_TRIAGEM || "gpt-4o-mini";
+
+export type MensagemChat = { role: "user" | "assistant"; content: string };
 
 async function completar(body: Record<string, unknown>): Promise<string> {
   const apiKey = process.env.ROTEIROS_AI_KEY;
@@ -35,7 +39,15 @@ async function completar(body: Record<string, unknown>): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(`Erro na API de IA (${response.status}): ${await response.text()}`);
+    const detalhe = await response.text();
+    // Sem saldo não é falha do sistema: diz o que fazer e mantém o código da
+    // API ao lado, pra quem precisar investigar.
+    if (response.status === 429 && /insufficient_quota|credit_balance_exhausted/.test(detalhe)) {
+      throw new Error(
+        "Recarregue os créditos de API para continuar. (código: insufficient_quota)"
+      );
+    }
+    throw new Error(`Erro na API de IA (${response.status}): ${detalhe}`);
   }
 
   const data = await response.json();
@@ -64,6 +76,29 @@ export async function chatJson<T>({
       // Teto pro texto que vem da tela: o chat já corta o dele, aqui cobre o resto.
       { role: "user", content: user.slice(0, 20000) },
     ],
+    response_format: { type: "json_schema", json_schema: schema },
+    temperature,
+  });
+  return JSON.parse(content) as T;
+}
+
+/** Conversa com histórico, resposta no formato do schema. */
+export async function chatConversaJson<T>({
+  model,
+  system,
+  mensagens,
+  schema,
+  temperature,
+}: {
+  model: string;
+  system: string;
+  mensagens: MensagemChat[];
+  schema: object;
+  temperature: number;
+}): Promise<T> {
+  const content = await completar({
+    model,
+    messages: [{ role: "system", content: system }, ...mensagens],
     response_format: { type: "json_schema", json_schema: schema },
     temperature,
   });

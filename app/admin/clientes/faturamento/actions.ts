@@ -5,11 +5,17 @@ import {
   closeMonth,
   createService,
   deleteService,
+  getInvoiceClientId,
   reopenInvoice,
   updateService,
 } from "@/lib/billing";
 import { getCurrentSession, requireFeature } from "@/lib/session";
-import { readBacklogCardBilling, updateBacklogCardBilling } from "@/lib/backlog";
+import { assertClientAllowed, getCurrentClientScope } from "@/lib/clientAccess";
+import {
+  getBacklogCardClientId,
+  readBacklogCardBilling,
+  updateBacklogCardBilling,
+} from "@/lib/backlog";
 
 function revalidateBilling() {
   revalidatePath("/admin/clientes/faturamento");
@@ -24,6 +30,8 @@ export async function updateDeliveryBillingAction(formData: FormData) {
   await requireFeature("financeiro");
   const cardId = String(formData.get("card_id") ?? "");
   if (!cardId) return;
+  const clientId = await getBacklogCardClientId(cardId);
+  if (clientId) assertClientAllowed(await getCurrentClientScope(), clientId);
   await updateBacklogCardBilling(cardId, readBacklogCardBilling(formData));
   revalidateBilling();
 }
@@ -60,8 +68,11 @@ export async function deleteServiceAction(formData: FormData) {
 export async function closeMonthAction(formData: FormData) {
   await requireFeature("financeiro");
   const session = await getCurrentSession();
+  const clientId = String(formData.get("client_id"));
+  assertClientAllowed(await getCurrentClientScope(), clientId);
+
   await closeMonth({
-    clientId: String(formData.get("client_id")),
+    clientId,
     month: String(formData.get("month")),
     notes: String(formData.get("notes") ?? ""),
     userId: session?.userId ?? null,
@@ -71,6 +82,10 @@ export async function closeMonthAction(formData: FormData) {
 
 export async function reopenInvoiceAction(formData: FormData) {
   await requireFeature("financeiro");
-  await reopenInvoice(String(formData.get("id")));
+  const id = String(formData.get("id"));
+  const clientId = await getInvoiceClientId(id);
+  if (clientId) assertClientAllowed(await getCurrentClientScope(), clientId);
+
+  await reopenInvoice(id);
   revalidateBilling();
 }

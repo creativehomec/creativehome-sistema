@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { listEntregasColumnsWithCounts } from "@/lib/backlog";
 import { getPortalSession, listMediaForCards, listPortalCards } from "@/lib/clientPortal";
 import { toPickerImages, getGalleryClientWithImages } from "@/lib/galleries";
 import { AttachMediaProvider } from "./AttachMedia";
 import { MaterialItem } from "./MaterialItem";
+import { PortalBoard } from "./PortalBoard";
 import { shortDate } from "./shortDate";
 import { pCard, pLead, pSeg, pSegWrap, pTitle } from "../portalUi";
 
@@ -26,11 +28,13 @@ export default async function MateriaisPage({
   const { clientId, preview } = await getPortalSession();
   const query = await searchParams;
   const showApproved = query.v === "aprovados";
+  const showBoard = query.v === "quadro";
   const open = query.abrir;
-  const cards = (await listPortalCards(clientId)).filter((c) => c.in_review);
-  const media = await listMediaForCards(clientId, cards);
+  const all = await listPortalCards(clientId);
+  const cards = all.filter((c) => c.in_review);
+  const media = showBoard ? {} : await listMediaForCards(clientId, cards);
   // Só a equipe (prévia) conecta arquivos; o cliente nem recebe a lista.
-  const pickerImages = preview ? toPickerImages((await getGalleryClientWithImages(clientId))?.images ?? []) : null;
+  const pickerImages = preview && !showBoard ? toPickerImages((await getGalleryClientWithImages(clientId))?.images ?? []) : null;
   const waiting = cards.filter((c) => !c.approved_at);
   const done = cards.filter((c) => c.approved_at);
   const list = showApproved ? done : waiting;
@@ -44,8 +48,9 @@ export default async function MateriaisPage({
 
       <div role="group" aria-label="Filtrar materiais" className={pSegWrap}>
         {[
-          { label: `Aguardando (${waiting.length})`, href: "/cliente/materiais", on: !showApproved },
+          { label: `Aguardando (${waiting.length})`, href: "/cliente/materiais", on: !showApproved && !showBoard },
           { label: `Aprovados (${done.length})`, href: "/cliente/materiais?v=aprovados", on: showApproved },
+          { label: "Quadro", href: "/cliente/materiais?v=quadro", on: showBoard },
         ].map((t) => (
           <Link key={t.label} href={t.href} aria-current={t.on ? "true" : undefined} className={pSeg(t.on)}>
             {t.label}
@@ -53,7 +58,12 @@ export default async function MateriaisPage({
         ))}
       </div>
 
-      {list.length ? (
+      {showBoard ? (
+        <PortalBoard
+          columns={(await listEntregasColumnsWithCounts()).filter((c) => c.clientVisible)}
+          cards={all}
+        />
+      ) : list.length ? (
         <Wrapper images={pickerImages}>
           <ul className={`${pCard} p-0`}>
             {list.map((card) => (

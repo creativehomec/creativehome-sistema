@@ -4,6 +4,8 @@ import { getConnectedGoogleAccount } from "@/lib/googleDrive";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { getCurrentUsername } from "@/lib/session";
+import { getCurrentClientScope } from "@/lib/clientAccess";
+
 import {
   createGalleryClientAction,
   deleteGalleryClientAction,
@@ -26,7 +28,7 @@ export default async function GalleryClientsPage({
   const driveConnected = params.drive_connected === "1";
 
   const [clients, username, googleAccount] = await Promise.all([
-    listGalleryClients(),
+    listGalleryClients({ clientScope: await getCurrentClientScope() }),
     getCurrentUsername(),
     getConnectedGoogleAccount(),
   ]);
@@ -57,7 +59,14 @@ export default async function GalleryClientsPage({
             <p className="text-sm font-medium text-neutral-900">
               Conta Google (Drive)
             </p>
-            {googleAccount ? (
+            {googleAccount?.serviceAccount ? (
+              <p className="text-sm text-neutral-500">
+                Compartilhe cada pasta do Drive (como Leitor) com{" "}
+                <code className="select-all rounded bg-neutral-100 px-1 py-0.5 text-xs text-neutral-900">
+                  {googleAccount.email}
+                </code>
+              </p>
+            ) : googleAccount ? (
               <p className="text-sm text-neutral-500">
                 Conectada: {googleAccount.email || "conta sem email visível"}
               </p>
@@ -68,7 +77,7 @@ export default async function GalleryClientsPage({
               </p>
             )}
           </div>
-          {googleAccount ? (
+          {googleAccount?.serviceAccount ? null : googleAccount ? (
             <form action={disconnectGoogleAccountAction}>
               <button
                 type="submit"
