@@ -5,8 +5,26 @@ import { getCurrentSession } from "@/lib/session";
 /**
  * "Ver como o cliente": o admin escolhe um cliente e passa a ver o portal
  * dele, só leitura, sem trocar de login. `?sair=1` volta pro calendário.
+ *
+ * Esta rota grava e apaga cookie, então pré-carga não pode chegar aqui: o
+ * Next pré-carrega sozinho os <Link> que aparecem na tela, e cada pré-carga
+ * da lista de clientes gravava um cliente (valia o último da lista) e a do
+ * botão Voltar apagava a escolha. Por isso a pré-carga sai antes de tudo, sem
+ * efeito, e os links pra cá são <a> comuns.
  */
+function isPrefetch(request: Request) {
+  const h = request.headers;
+  return (
+    h.has("next-router-prefetch") ||
+    h.get("purpose") === "prefetch" ||
+    (h.get("sec-purpose") ?? "").includes("prefetch")
+  );
+}
+
 export async function GET(request: Request) {
+  if (isPrefetch(request)) {
+    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  }
   const url = new URL(request.url);
   const session = await getCurrentSession();
   // Equipe toda (admin e membro).

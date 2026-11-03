@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
 import { cookies } from "next/headers";
@@ -53,14 +52,16 @@ export default async function ClienteLayout({ children }: { children: React.Reac
       <header className={`${pContainer} flex items-center justify-between gap-3 pt-[max(1rem,env(safe-area-inset-top))] md:pt-8 lg:grid lg:grid-cols-[1fr_auto_1fr]`}>
         <div className="flex items-center gap-2">
           {preview ? (
-            // Voltar ao painel: ícone de seta ao lado do logo, sem texto.
-            <Link
+            // Voltar ao painel: ícone de seta ao lado do logo, sem texto. <a>
+            // comum: a rota apaga o cookie da prévia e uma pré-carga a dispararia.
+            // eslint-disable-next-line @next/next/no-html-link-for-pages -- route handler, não página
+            <a
               href="/cliente/previa?sair=1"
               aria-label="Voltar ao painel"
               className="grid size-10 place-items-center text-[var(--p-text)] active:opacity-70"
             >
               <ChevronLeft className="size-5" aria-hidden />
-            </Link>
+            </a>
           ) : null}
           {/* Logo creme direto no degradê, sem chip: a cor vem de currentColor. */}
           <BrandLogo className="h-5 w-auto text-[var(--brand-cream)]" />

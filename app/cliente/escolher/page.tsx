@@ -40,11 +40,13 @@ export default async function EscolherClientePage() {
             key={client.id}
             className={`${pRow} lg:rounded-[26px] lg:border lg:border-[var(--p-line)] lg:bg-[var(--p-glass)] lg:first:border-t`}
           >
-            <Link href={`/cliente/previa?cliente=${client.id}`} className="flex min-h-[4.5rem] items-center gap-3 p-4">
+            {/* <a> comum, não <Link>: a rota grava o cliente escolhido num cookie
+                e uma pré-carga do Next gravaria um por um (ficava o último). */}
+            <a href={`/cliente/previa?cliente=${client.id}`} className="flex min-h-[4.5rem] items-center gap-3 p-4">
               <ClientAvatar name={client.name} logoUrl={findClientLogo(client.name, logos)} size={48} />
               <span className="min-w-0 flex-1 truncate font-semibold">{client.name}</span>
               <ChevronRight className="size-4 shrink-0 text-[var(--p-muted)]" aria-hidden />
-            </Link>
+            </a>
           </li>
         ))}
       </ul>
