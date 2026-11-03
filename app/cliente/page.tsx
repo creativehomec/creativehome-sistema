@@ -84,13 +84,15 @@ export default async function ClientePage() {
       </header>
 
       {/* O que pede ação vem em creme; o resto fica em vidro. */}
-      <section aria-labelledby="aprovar" className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2 lg:self-stretch">
+      <section aria-labelledby="aprovar" className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2 lg:self-start">
         <h2 id="aprovar" className={pH2}>
           Para aprovar
         </h2>
+        {/* Mesma altura mínima do cartão da semana: alinhados em repouso, mas
+            independentes. Abrir um dia na semana não estica este cartão. */}
         <Link
           href="/cliente/materiais"
-          className={`flex min-h-16 flex-1 items-center justify-between gap-3 transition-transform active:scale-[0.99] ${
+          className={`flex min-h-16 items-center justify-between gap-3 transition-transform active:scale-[0.99] lg:min-h-[6.75rem] ${
             waiting ? pCardSolid : pCard
           }`}
         >
@@ -111,11 +113,11 @@ export default async function ClientePage() {
       </section>
 
       {/* Semana de domingo a sábado. Toque num dia com atividade expande ali. */}
-      <section aria-labelledby="semana" className="flex flex-col gap-3 lg:col-start-1 lg:row-start-2 lg:self-stretch">
+      <section aria-labelledby="semana" className="flex flex-col gap-3 lg:col-start-1 lg:row-start-2 lg:self-start">
         <h2 id="semana" className={pH2}>
           Esta semana
         </h2>
-        <div className="flex-1 [&>*]:h-full">
+        <div className="lg:[&>*]:min-h-[6.75rem]">
           <WeekStrip
             days={week.map((d) => {
               const iso = isoOf(d);

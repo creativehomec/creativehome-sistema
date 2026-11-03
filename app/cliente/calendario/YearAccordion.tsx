@@ -59,7 +59,9 @@ export function YearAccordion({
   }
 
   return (
-    <ul className="space-y-2">
+    // Duas colunas em tela larga; cada mês abre na própria altura (items-start),
+    // sem esticar o vizinho da linha.
+    <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
       {months.map(({ ideas, posts }, index) => {
         const isOpen = open.has(index);
         const empty = !ideas.length && !posts.length;
