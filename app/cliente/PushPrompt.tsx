@@ -22,7 +22,7 @@ export function PushPrompt() {
 
   if (state === "on") {
     return (
-      <p className="flex flex-wrap items-center gap-x-2 text-sm text-[var(--brand-muted)]">
+      <p className="flex flex-wrap items-center gap-x-2 text-sm text-[var(--p-muted)]">
         <Bell className="size-4" aria-hidden /> Avisos ativados neste aparelho.
         <button
           type="button"
@@ -50,23 +50,23 @@ export function PushPrompt() {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-4" aria-labelledby="avisos">
+    <section className="rounded-[26px] border border-[var(--p-line)] bg-[var(--p-glass)] p-4 text-[var(--p-text)]" aria-labelledby="avisos">
       <h2 id="avisos" className="flex items-center gap-2 font-semibold">
         {state === "denied" ? <BellOff className="size-5" aria-hidden /> : <Bell className="size-5" aria-hidden />}
         Receba avisos no celular
       </h2>
       {state === "iphone-browser" ? (
-        <p className="mt-1 text-sm text-[var(--brand-muted)]">
+        <p className="mt-1 text-sm text-[var(--p-muted)]">
           No iPhone, toque em <strong>Compartilhar</strong> e em <strong>Adicionar à Tela de Início</strong>. Depois,
           abra o portal pelo novo ícone e ative os avisos aqui.
         </p>
       ) : state === "denied" ? (
-        <p className="mt-1 text-sm text-[var(--brand-muted)]">
+        <p className="mt-1 text-sm text-[var(--p-muted)]">
           As notificações estão bloqueadas nos ajustes deste aparelho. Libere-as para o portal e volte aqui.
         </p>
       ) : (
         <>
-          <p className="mt-1 text-sm text-[var(--brand-muted)]">
+          <p className="mt-1 text-sm text-[var(--p-muted)]">
             Fique sabendo quando houver material para aprovar, roteiro publicado, nova ideia ou postagem no dia seguinte.
           </p>
           <button
@@ -80,7 +80,7 @@ export function PushPrompt() {
                 setBusy(false);
               }
             }}
-            className="mt-3 min-h-11 rounded-full bg-[var(--brand-ink)] px-5 text-sm font-semibold text-[var(--brand-cream)] disabled:opacity-60"
+            className="mt-3 min-h-11 rounded-full bg-[var(--brand-cream)] px-5 text-sm font-semibold text-[var(--brand-ink)] disabled:opacity-60"
           >
             {busy ? "Ativando…" : "Ativar avisos"}
           </button>

@@ -2,16 +2,12 @@
 
 import { useFormStatus } from "react-dom";
 import { approveCardAction, requestChangesAction } from "../actions";
+import { pGhost, pPrimary } from "../portalUi";
 
 function Submit({ children, primary = false }: { children: string; primary?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      disabled={pending}
-      className={`min-h-12 w-full rounded-full px-5 font-semibold transition-opacity disabled:opacity-60 ${
-        primary ? "bg-[var(--brand-ink)] text-[var(--brand-cream)]" : "border border-[var(--brand-border)]"
-      }`}
-    >
+    <button disabled={pending} className={`${primary ? pPrimary : pGhost} w-full`}>
       {pending ? "Enviando…" : children}
     </button>
   );
@@ -25,8 +21,10 @@ export function ReviewActions({ cardId }: { cardId: string }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <details className="group col-span-1 [&[open]]:col-span-2 [&[open]]:order-2">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--brand-border)] font-semibold [&::-webkit-details-marker]:hidden group-open:hidden">
+        {/* Grupo nomeado: este <details> fica dentro do <details> do material, que também
+            é "group". Com `group-open:` sem nome o botão sumia assim que o material abria. */}
+        <details className="group/ajuste col-span-1 [&[open]]:col-span-2 [&[open]]:order-2">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--p-line)] bg-[var(--p-glass)] font-semibold text-[var(--p-text)] [&::-webkit-details-marker]:hidden group-open/ajuste:hidden">
             Ajuste
           </summary>
           <form action={requestChangesAction} className="space-y-2">
@@ -40,7 +38,7 @@ export function ReviewActions({ cardId }: { cardId: string }) {
               required
               rows={3}
               autoFocus
-              className="w-full rounded-xl border border-[var(--brand-border)] bg-white p-3"
+              className="w-full rounded-[18px] border border-[var(--p-line)] bg-[var(--brand-cream)] p-3 text-[var(--brand-ink)]"
             />
             <Submit>Enviar ajuste</Submit>
           </form>

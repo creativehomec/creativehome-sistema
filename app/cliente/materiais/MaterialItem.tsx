@@ -51,7 +51,7 @@ function RowThumb({ items, coverUrl }: { items: ViewerItem[]; coverUrl: string |
     );
   }
   return (
-    <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-white/70 text-[var(--brand-olive)]">
+    <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-[var(--brand-cream)]/15 text-[var(--brand-cream)]">
       <Clapperboard className="size-6" strokeWidth={1.6} aria-hidden />
     </span>
   );
@@ -79,34 +79,37 @@ export function MaterialItem({
   const attach = useAttachMedia();
 
   return (
-    <li className="border-b border-[var(--brand-taupe)] last:border-b-0">
+    <li className="border-t border-[var(--p-line)] first:border-t-0">
       <details
         ref={details}
         open={defaultOpen || undefined}
         onToggle={(e) => setOpened(e.currentTarget.open)}
         className="group"
       >
-        <summary className="flex min-h-[4.5rem] cursor-pointer list-none items-center gap-3 py-3 [&::-webkit-details-marker]:hidden">
+        <summary className="flex min-h-[4.5rem] cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
           <RowThumb items={material.items} coverUrl={material.cover_url} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-medium">{material.title || "Sem título"}</span>
-            <span className="block truncate text-sm text-[var(--brand-muted)]">
+            <span className="block truncate font-semibold">{material.title || "Sem título"}</span>
+            <span className="block truncate text-sm text-[var(--p-muted)]">
               <span className="capitalize">{material.format}</span>
               {material.dateLabel ? ` · ${material.dateLabel}` : ""}
             </span>
             {material.changesRequested && !material.approved ? (
-              <span className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-olive)]">
+              <span className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-[#f4a582]">
                 <MessageSquareMore className="size-3.5" aria-hidden /> Ajuste solicitado
               </span>
             ) : null}
           </span>
-          <ChevronRight className="size-4 shrink-0 text-[var(--brand-muted)] transition-transform group-open:rotate-90" aria-hidden />
+          <ChevronRight className="size-4 shrink-0 text-[var(--p-muted)] transition-transform group-open:rotate-90" aria-hidden />
         </summary>
 
         {opened ? (
-          <div className="space-y-4 pb-5">
+          // Em tela larga o material abre em duas colunas: arquivos à esquerda,
+          // legenda e decisão à direita, lado a lado e sem rolar até o botão.
+          <div className="grid gap-4 px-4 pb-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-6">
             <MaterialViewer items={material.items} coverUrl={material.cover_url} driveUrl={material.drive_url} />
 
+            <div className="space-y-4">
             {attach ? (
               <button
                 type="button"
@@ -118,39 +121,40 @@ export function MaterialItem({
                     driveUrl: material.drive_url ?? "",
                   })
                 }
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-dashed border-[var(--brand-ink)] px-4 text-sm font-semibold"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-dashed border-[var(--p-line)] px-4 text-sm font-semibold text-[var(--p-text)]"
               >
                 Conectar arquivos do Drive ({material.mediaIds.length}) · só equipe
               </button>
             ) : null}
 
             {material.caption ? (
-              <section aria-label="Legenda" className="rounded-2xl bg-white/60 p-4">
-                <h3 className="mb-1 text-sm font-semibold text-[var(--brand-muted)]">Legenda</h3>
+              <section aria-label="Legenda" className="rounded-[22px] border border-[var(--p-line)] bg-white/5 p-4">
+                <h3 className="mb-1 text-sm font-semibold text-[var(--p-muted)]">Legenda</h3>
                 <p className="whitespace-pre-line">{material.caption}</p>
               </section>
             ) : null}
 
             {material.guide ? (
               <Link
-                href={`/guia/${material.guide.slug}?de=portal`}
-                className="inline-flex min-h-11 items-center gap-1 text-sm font-medium underline underline-offset-4"
+                href={`/guia/${material.guide.slug}?de=portal&volta=materiais`}
+                className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--p-text)] underline underline-offset-4"
               >
                 Ver o roteiro desta gravação <ChevronRight className="size-4" aria-hidden />
               </Link>
             ) : null}
 
             {material.changesRequested && material.feedback && !material.approved ? (
-              <p className="rounded-2xl bg-white p-3 text-sm">
+              <p className="rounded-[22px] bg-[var(--brand-cream)] p-3 text-sm text-[var(--brand-ink)]">
                 <span className="font-semibold">Ajuste solicitado:</span> {material.feedback}
               </p>
             ) : null}
 
             {material.approved && material.approvedByTeam ? (
-              <p className="text-sm text-[var(--brand-muted)]">Aprovação registrada pela equipe da {brand.name}.</p>
+              <p className="text-sm text-[var(--p-muted)]">Aprovação registrada pela equipe da {brand.name}.</p>
             ) : null}
 
             {!material.approved ? <ReviewActions cardId={material.id} /> : null}
+            </div>
           </div>
         ) : null}
       </details>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { GalleryThumb } from "@/components/GalleryThumb";
@@ -524,24 +525,25 @@ export function GalleryFolderBrowser({
   return (
     <div className="pb-20">
       {fromPortal ? (
-        <div className="sticky top-0 z-30 -mx-4 mb-4 flex items-center justify-between gap-3 border-b border-neutral-200 bg-white/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur">
+        // Barra no tom escuro do portal: deixa claro que a volta é pro portal.
+        <div className="sticky top-0 z-30 -mx-4 mb-4 flex items-center justify-between gap-3 bg-[var(--brand-ink)] px-4 pt-[env(safe-area-inset-top)] text-[var(--brand-cream)]">
           {path.length ? (
             <button
               type="button"
               onClick={() => goTo(path.slice(0, -1))}
-              className="inline-flex min-h-12 items-center gap-1 text-sm font-medium"
+              className="inline-flex min-h-12 items-center gap-1 text-sm font-semibold"
             >
-              ← {path.length > 1 ? path[path.length - 2] : "Todas as pastas"}
+              ‹ {path.length > 1 ? path[path.length - 2] : "Todas as pastas"}
             </button>
           ) : (
-            <a href="/cliente" className="inline-flex min-h-12 items-center gap-1 text-sm font-medium">
-              ← Voltar ao portal
-            </a>
+            <Link href="/cliente" className="inline-flex min-h-12 items-center gap-1 text-sm font-semibold">
+              ‹ Voltar ao portal
+            </Link>
           )}
           {path.length ? (
-            <a href="/cliente" className="inline-flex min-h-12 items-center text-sm text-neutral-600 underline underline-offset-4">
-              Portal
-            </a>
+            <Link href="/cliente" className="inline-flex min-h-12 items-center text-sm opacity-80 underline underline-offset-4">
+              Início do portal
+            </Link>
           ) : null}
         </div>
       ) : null}

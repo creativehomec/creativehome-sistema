@@ -8,16 +8,34 @@ import {
 } from "@/lib/clientPortal";
 import { CreatorTag } from "@/components/CreatorTag";
 import { listIdeasBetween } from "@/lib/editorialCalendar";
+import { listClientPosts } from "@/lib/clientArea";
 import { driveTitle, MONTH_NAMES, nextMonths, todayISO } from "@/lib/editorialMonths";
 import { PushPrompt } from "./PushPrompt";
+import { WeekStrip } from "./WeekStrip";
+import { pCard, pCardSolid, pCount, pDateChip, pH2, pLead, pLink, pRow, pTitle } from "./portalUi";
 import { brand } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
-const HEADING = { fontFamily: "Bootzy, sans-serif", letterSpacing: "0.02em" };
+const pad = (n: number) => String(n).padStart(2, "0");
+const isoOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const firstOfMonth = (m: { year: number; month: number }) => `${m.year}-${pad(m.month)}-01`;
+const WEEK_LETTERS = ["D", "S", "T", "Q", "Q", "S", "S"];
+const MONTH_LABELS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-const firstOfMonth = (m: { year: number; month: number }) =>
-  `${m.year}-${String(m.month).padStart(2, "0")}-01`;
+/** A semana de hoje, de domingo a sábado, pela data de Brasília (meio-dia evita virada de dia). */
+function weekOf(today: string) {
+  const day = new Date(`${today}T12:00:00`);
+  const sunday = new Date(day);
+  sunday.setDate(day.getDate() - day.getDay());
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    return d;
+  });
+}
+
+const WEEKDAY_NAMES = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
 
 function dayParts(date: string) {
   const d = new Date(`${date}T12:00:00`);
@@ -34,12 +52,15 @@ export default async function ClientePage() {
   // Mês atual e os dois seguintes (pode virar o ano), pela data de Brasília.
   const span = nextMonths(new Date(`${today}T12:00:00`), 3);
   const client = await getPortalClient(clientId);
-  const [cards, ideas] = await Promise.all([
+  const week = weekOf(today);
+  const [cards, ideas, weekPosts] = await Promise.all([
     listPortalCards(clientId),
     listIdeasBetween(clientId, firstOfMonth(span[0]), firstOfMonth(span[2]), {
       includeInternal: false,
     }),
+    listClientPosts(clientId, isoOf(week[0]), isoOf(week[6])),
   ]);
+  const visibleWeek = weekPosts.filter((p) => p.visible);
 
   const review = cards.filter((c) => c.in_review);
   const waiting = review.filter((c) => !c.approved_at).length;
@@ -47,121 +68,151 @@ export default async function ClientePage() {
   const upcoming = listUpcoming(cards, today);
   const firstName = viewerName || (client.contact_name || client.name).split(" ")[0];
 
+  // Diagramação: duas colunas iguais, e cada linha da grade tem dois blocos
+  // com título na mesma altura, para os olhos correrem pelas linhas.
+  //   linha 2: Esta semana          | Para aprovar
+  //   linha 3: Próximas postagens   | Ideias para os próximos meses
+  //   linha 4: Galeria              | Avisos
+  // No celular é uma coluna, na ordem do DOM: aprovar, semana, próximas,
+  // ideias, galeria, avisos. Toda seção segue o mesmo molde (título, cartão),
+  // com 12 px entre o título e o cartão e 40 px entre as linhas.
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-4xl leading-none" style={HEADING}>
-          Olá, {firstName}
-        </h1>
-        <p className="mt-2 text-[var(--brand-muted)]">
-          Acompanhe aqui o andamento do seu conteúdo com a {brand.name}.
-        </p>
+    <div className="space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-10 lg:space-y-0">
+      <header className="lg:col-span-2">
+        <h1 className={pTitle}>Olá, {firstName}</h1>
+        <p className={pLead}>Acompanhe aqui o andamento do seu conteúdo com a {brand.name}.</p>
       </header>
 
-      <Link
-        href="/cliente/materiais"
-        className={`flex min-h-16 items-center justify-between gap-3 rounded-2xl px-5 py-4 transition-transform active:scale-[0.99] ${
-          waiting
-            ? "bg-[var(--brand-ink)] text-[var(--brand-cream)]"
-            : "bg-white text-[var(--brand-ink)]"
-        }`}
-      >
-        <span>
-          <span className="block text-lg font-semibold">
-            {waiting} {waiting === 1 ? "material para aprovação" : "materiais para aprovação"}
-          </span>
-          <span className={`block text-sm ${waiting ? "opacity-80" : "text-[var(--brand-muted)]"}`}>
-            {review.length
-              ? `${approved} ${approved === 1 ? "aprovado" : "aprovados"} de ${review.length}`
-              : "Os materiais liberados pela nossa equipe ficarão disponíveis aqui."}
-          </span>
-        </span>
-        <span className="flex items-center gap-1 text-sm">
-          Abrir <ChevronRight className="size-4" aria-hidden />
-        </span>
-      </Link>
-
-      {preview ? null : <PushPrompt />}
-
-      {client.status === "published" ? (
+      {/* O que pede ação vem em creme; o resto fica em vidro. */}
+      <section aria-labelledby="aprovar" className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2 lg:self-stretch">
+        <h2 id="aprovar" className={pH2}>
+          Para aprovar
+        </h2>
         <Link
-          href={`/galeria/${client.slug}?de=portal`}
-          className="flex min-h-14 items-center gap-3 rounded-2xl border border-[var(--brand-border)] px-5 py-3 font-semibold transition-colors hover:bg-white/60"
+          href="/cliente/materiais"
+          className={`flex min-h-16 flex-1 items-center justify-between gap-3 transition-transform active:scale-[0.99] ${
+            waiting ? pCardSolid : pCard
+          }`}
         >
-          <HardDrive className="size-5 text-[var(--brand-olive)]" aria-hidden />
-          <span className="flex-1">{driveTitle(client.name, client.gallery_article)}</span>
-          <ChevronRight className="size-4 text-[var(--brand-muted)]" aria-hidden />
+          <span>
+            <span className="block text-lg font-semibold">
+              {waiting} {waiting === 1 ? "material para aprovação" : "materiais para aprovação"}
+            </span>
+            <span className={`block text-sm ${waiting ? "opacity-80" : "text-[var(--p-muted)]"}`}>
+              {review.length
+                ? `${approved} ${approved === 1 ? "aprovado" : "aprovados"} de ${review.length}`
+                : "Os materiais liberados pela nossa equipe ficarão disponíveis aqui."}
+            </span>
+          </span>
+          <span className="flex items-center gap-1 text-sm font-semibold">
+            Abrir <ChevronRight className="size-4" aria-hidden />
+          </span>
         </Link>
-      ) : null}
+      </section>
+
+      {/* Semana de domingo a sábado. Toque num dia com atividade expande ali. */}
+      <section aria-labelledby="semana" className="flex flex-col gap-3 lg:col-start-1 lg:row-start-2 lg:self-stretch">
+        <h2 id="semana" className={pH2}>
+          Esta semana
+        </h2>
+        <div className="flex-1 [&>*]:h-full">
+          <WeekStrip
+            days={week.map((d) => {
+              const iso = isoOf(d);
+              return {
+                iso,
+                letter: WEEK_LETTERS[d.getDay()],
+                number: d.getDate(),
+                label: `${WEEKDAY_NAMES[d.getDay()]}, ${d.getDate()} de ${MONTH_LABELS[d.getMonth()]}`,
+                isToday: iso === today,
+                items: visibleWeek
+                  .filter((p) => p.post_date === iso)
+                  .map((p) => ({ id: p.id, title: p.title, format: p.format, done: p.done })),
+              };
+            })}
+          />
+        </div>
+      </section>
 
       {upcoming.length ? (
-      <section aria-labelledby="proximas">
-        <h2 id="proximas" className="mb-2 text-2xl" style={HEADING}>
-          Próximas postagens
-        </h2>
-        <ul>
-          {upcoming.map((card) => {
-            const { day, month, weekday } = dayParts(card.post_date!);
-            return (
-              <li key={card.id} className="flex items-center gap-4 border-b border-[var(--brand-taupe)] py-3 last:border-b-0">
-                <div className="flex w-14 shrink-0 flex-col items-center rounded-xl bg-[var(--brand-ink)] py-1.5 text-[var(--brand-cream)]">
-                  <span className="text-[11px] uppercase tracking-wide opacity-80">{month}</span>
-                  <span className="text-xl font-semibold leading-none">{day}</span>
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{card.title || "Sem título"}</p>
-                  <p className="text-sm text-[var(--brand-muted)]">
-                    <span className="capitalize">{weekday}</span> · <span className="capitalize">{card.format}</span>
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+        <section aria-labelledby="proximas" className="space-y-3 lg:col-start-1 lg:row-start-3">
+          <h2 id="proximas" className={pH2}>
+            Próximas postagens
+          </h2>
+          <ul className={`${pCard} p-0`}>
+            {upcoming.map((card) => {
+              const { day, month, weekday } = dayParts(card.post_date!);
+              return (
+                <li key={card.id} className={`flex items-center gap-4 p-4 ${pRow}`}>
+                  <div className={pDateChip}>
+                    <span className="text-[11px] font-medium uppercase tracking-wide opacity-80">{month}</span>
+                    <span className="text-xl font-bold leading-none">{day}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{card.title || "Sem título"}</p>
+                    <p className="text-sm text-[var(--p-muted)]">
+                      <span className="capitalize">{weekday}</span> · <span className="capitalize">{card.format}</span>
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       ) : null}
 
-      <section aria-labelledby="ideias">
-        <h2 id="ideias" className="mb-3 text-2xl" style={HEADING}>
+      {/* Um cartão só, com uma linha por mês: mesmo molde da lista ao lado. */}
+      <section aria-labelledby="ideias" className="space-y-3 lg:col-start-2 lg:row-start-3">
+        <h2 id="ideias" className={pH2}>
           Ideias para os próximos meses
         </h2>
-        <div className="space-y-5">
+        <ul className={`${pCard} p-0`}>
           {span.map(({ year, month }) => {
-            const list = ideas.filter((i) => i.month === `${year}-${String(month).padStart(2, "0")}-01`);
+            const list = ideas.filter((i) => i.month === `${year}-${pad(month)}-01`);
             return (
-              <div key={`${year}-${month}`}>
-                <h3 className="mb-1 flex items-baseline gap-2 text-lg font-semibold">
+              <li key={`${year}-${month}`} className={`p-4 ${pRow}`}>
+                <h3 className="flex items-center gap-2 text-lg font-semibold">
                   {MONTH_NAMES[month - 1]}
-                  {list.length ? (
-                    <span className="rounded-full bg-[var(--brand-ink)] px-2 py-0.5 text-xs font-medium text-[var(--brand-cream)]">
-                      {list.length}
-                    </span>
-                  ) : null}
+                  {list.length ? <span className={pCount}>{list.length}</span> : null}
                 </h3>
                 {list.length ? (
-                  <ul className="list-disc space-y-1.5 pl-5 marker:text-[var(--brand-olive)]">
+                  <ul className="mt-2 space-y-2">
                     {list.slice(0, 4).map((idea) => (
-                      <li key={idea.id}>
+                      <li key={idea.id} className="border-l-2 border-[var(--brand-cream)] pl-3">
                         <span className="font-medium">{idea.title}</span>{" "}
                         <CreatorTag idea={idea} viewerId={viewerId} />
-                        {idea.notes ? <span className="block text-sm text-[var(--brand-muted)]">{idea.notes}</span> : null}
+                        {idea.notes ? <span className="block text-sm text-[var(--p-muted)]">{idea.notes}</span> : null}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-[var(--brand-muted)]">Nenhuma ideia registrada.</p>
+                  <p className="mt-1 text-sm text-[var(--p-muted)]">Nenhuma ideia registrada.</p>
                 )}
-              </div>
+              </li>
             );
           })}
-        </div>
-        <Link
-          href="/cliente/calendario"
-          className="mt-3 inline-flex min-h-11 items-center gap-1 font-medium underline underline-offset-4"
-        >
+        </ul>
+        <Link href="/cliente/calendario" className={pLink}>
           Ver o calendário completo e sugerir uma ideia <ChevronRight className="size-4" aria-hidden />
         </Link>
       </section>
+
+      {client.status === "published" ? (
+        <Link
+          href={`/galeria/${client.slug}?de=portal`}
+          className={`flex min-h-14 items-center gap-3 lg:col-start-1 lg:row-start-4 ${pCard}`}
+        >
+          <HardDrive className="size-5 text-[var(--brand-cream)]" aria-hidden />
+          <span className="flex-1 font-semibold">{driveTitle(client.name, client.gallery_article)}</span>
+          <ChevronRight className="size-4 text-[var(--p-muted)]" aria-hidden />
+        </Link>
+      ) : null}
+
+      {preview ? null : (
+        <div className="lg:col-start-2 lg:row-start-4">
+          <PushPrompt />
+        </div>
+      )}
     </div>
   );
 }

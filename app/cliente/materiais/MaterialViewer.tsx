@@ -16,8 +16,8 @@ export interface ViewerItem {
 
 function Spinner() {
   return (
-    <span className="absolute inset-0 grid place-items-center bg-white/70" role="status" aria-label="Carregando">
-      <span className="size-8 animate-spin rounded-full border-2 border-[var(--brand-taupe)] border-t-[var(--brand-ink)]" />
+    <span className="absolute inset-0 grid place-items-center bg-[rgb(58_31_20/0.6)]" role="status" aria-label="Carregando">
+      <span className="size-8 animate-spin rounded-full border-2 border-[var(--p-line)] border-t-[var(--brand-cream)]" />
     </span>
   );
 }
@@ -32,7 +32,7 @@ function Tile({ item, onOpen }: { item: ViewerItem; onOpen: () => void }) {
     return (
       <a
         href={item.downloadSrc}
-        className="grid aspect-[4/5] w-[78%] shrink-0 snap-center place-items-center rounded-2xl bg-white p-4 text-center text-sm underline sm:w-[60%]"
+        className="grid aspect-[4/5] w-[78%] shrink-0 snap-center place-items-center rounded-[22px] border border-[var(--p-line)] bg-[var(--p-glass)] p-4 text-center text-sm text-[var(--p-text)] underline sm:w-[60%]"
       >
         {item.caption || "Abrir arquivo"}
       </a>
@@ -43,7 +43,7 @@ function Tile({ item, onOpen }: { item: ViewerItem; onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label={item.kind === "video" ? `Reproduzir ${item.caption || "vídeo"}` : `Ampliar ${item.caption || "foto"}`}
-      className="relative aspect-[4/5] w-[78%] shrink-0 snap-center overflow-hidden rounded-2xl bg-white sm:w-[60%]"
+      className="relative aspect-[4/5] w-[78%] shrink-0 snap-center overflow-hidden rounded-[22px] bg-black/30 sm:w-[60%] lg:w-[72%]"
     >
       {!loaded ? <Spinner /> : null}
       {item.kind === "video" ? (
@@ -249,7 +249,7 @@ export function MaterialViewer({
 
   if (!items.length && !coverUrl && !driveUrl) {
     return (
-      <p className="rounded-2xl bg-white/60 p-4 text-sm text-[var(--brand-muted)]">
+      <p className="rounded-[22px] border border-[var(--p-line)] p-4 text-sm text-[var(--p-muted)]">
         Os arquivos deste material ainda não foram anexados. Se precisar
         conferi-lo agora, fale com a nossa equipe.
       </p>
@@ -259,13 +259,13 @@ export function MaterialViewer({
   return (
     <div className="space-y-3">
       {items.length ? (
-        <div className="-mx-[var(--gutter)] flex snap-x snap-mandatory gap-3 overflow-x-auto px-[var(--gutter)] pb-1 [scrollbar-width:none]">
+        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:px-0">
           {items.map((item) => (
             <Tile key={item.id} item={item} onOpen={() => setOpen(viewable.findIndex((v) => v.id === item.id))} />
           ))}
         </div>
       ) : coverUrl ? (
-        <div className="relative overflow-hidden rounded-2xl bg-white">
+        <div className="relative overflow-hidden rounded-[22px] bg-black/30">
           {!coverLoaded ? <Spinner /> : null}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -289,7 +289,7 @@ export function MaterialViewer({
             href={driveUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--brand-border)] px-4 text-sm font-semibold"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--p-line)] bg-[var(--p-glass)] px-4 text-sm font-semibold text-[var(--p-text)]"
           >
             Abrir no Drive <ExternalLink className="size-4" aria-hidden />
           </a>

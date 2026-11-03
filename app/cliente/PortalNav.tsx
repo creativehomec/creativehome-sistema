@@ -12,29 +12,39 @@ const TABS = [
 ];
 
 /**
- * Três abas, não mais: o cliente decide em um olhar. Fixa embaixo no celular
- * (polegar) e vira abas no topo do conteúdo no desktop. A aba atual leva peso
- * e traço, não só cor.
+ * Três abas, não mais: o cliente decide em um olhar. No celular é uma pílula
+ * de vidro fixa embaixo (polegar). No desktop é a mesma pílula, no topo do
+ * conteúdo. A aba atual é creme sólido: peso e cor, não só cor.
  */
-export function PortalNav() {
+export function PortalNav({ floating = false }: { floating?: boolean }) {
   const pathname = usePathname();
   return (
     <nav
       aria-label="Portal do cliente"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--brand-taupe)] bg-[var(--brand-cream)]/95 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur md:static md:border-0 md:bg-transparent md:pb-0 md:backdrop-blur-none"
+      className={
+        floating
+          ? "fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 rounded-full border border-[var(--p-line)] bg-[rgb(58_31_20/0.8)] shadow-lg shadow-black/20 backdrop-blur-md"
+          : "md:inline-flex"
+      }
     >
-      <ul className="mx-auto flex max-w-xl md:gap-2">
+      <ul
+        className={
+          floating
+            ? "mx-auto flex max-w-xl gap-1 p-1.5"
+            : "flex gap-1 rounded-full border border-[var(--p-line)] bg-[var(--p-glass)] p-1.5"
+        }
+      >
         {TABS.map(({ href, label, Icon }) => {
           const current = href === "/cliente" ? pathname === href : pathname.startsWith(href);
           return (
-            <li key={href} className="flex-1 md:flex-none">
+            <li key={href} className={floating ? "flex-1" : ""}>
               <Link
                 href={href}
                 aria-current={current ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs outline-offset-[-3px] transition-colors md:min-h-11 md:flex-row md:gap-2 md:rounded-full md:px-4 md:text-sm ${
+                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full text-xs outline-offset-[-3px] transition-colors active:opacity-70 lg:min-h-11 lg:flex-row lg:gap-2 lg:px-4 lg:text-sm ${
                   current
-                    ? "font-semibold text-[var(--brand-ink)] md:bg-[var(--brand-ink)] md:text-[var(--brand-cream)]"
-                    : "text-[var(--brand-muted)] hover:text-[var(--brand-ink)]"
+                    ? "bg-[var(--brand-cream)] font-semibold text-[var(--brand-ink)]"
+                    : "text-[var(--p-muted)] hover:text-[var(--p-text)]"
                 }`}
               >
                 <Icon className="size-5" strokeWidth={current ? 2.4 : 1.8} aria-hidden />

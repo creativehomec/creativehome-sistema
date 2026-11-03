@@ -12,8 +12,10 @@ export function GET() {
       start_url: "/cliente",
       scope: "/",
       display: "standalone",
-      background_color: "#fbf1e6",
-      theme_color: "#fbf1e6",
+      // Topo do degradê do portal: a abertura e a barra do app instalado
+      // ficam escuras como a tela, sem piscar creme.
+      background_color: "#1d0f0a",
+      theme_color: "#1d0f0a",
       icons: [{ src: "/apple-icon", sizes: "180x180", type: "image/png" }],
     },
     { headers: { "Content-Type": "application/manifest+json" } }

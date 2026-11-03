@@ -27,7 +27,7 @@ export function IdeaForm({
       <button
         type="button"
         onClick={() => dialog.current?.showModal()}
-        className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--brand-ink)] px-4 text-sm font-semibold text-[var(--brand-cream)]"
+        className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--brand-cream)] px-4 text-sm font-semibold text-[var(--brand-ink)]"
       >
         <Lightbulb className="size-4" aria-hidden />
         Sugerir ideia
@@ -140,7 +140,7 @@ export function IdeaForm({
 
       <p
         role="status"
-        className={`fixed inset-x-5 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-sm rounded-full bg-[var(--brand-ink)] px-4 py-3 text-center text-sm text-[var(--brand-cream)] transition-opacity md:bottom-8 ${
+        className={`fixed inset-x-5 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-sm rounded-full bg-[var(--brand-cream)] px-4 py-3 text-center text-sm font-semibold text-[var(--brand-ink)] transition-opacity md:bottom-8 ${
           done ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >

@@ -3,11 +3,10 @@ import { getPortalSession, listMediaForCards, listPortalCards } from "@/lib/clie
 import { toPickerImages, getGalleryClientWithImages } from "@/lib/galleries";
 import { AttachMediaProvider } from "./AttachMedia";
 import { MaterialItem } from "./MaterialItem";
-import { shortDate } from "./StatusChip";
+import { shortDate } from "./shortDate";
+import { pCard, pLead, pSeg, pSegWrap, pTitle } from "../portalUi";
 
 export const dynamic = "force-dynamic";
-
-const HEADING = { fontFamily: "Bootzy, sans-serif", letterSpacing: "0.02em" };
 
 function Wrapper({
   images,
@@ -39,34 +38,16 @@ export default async function MateriaisPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-4xl leading-none" style={HEADING}>
-          Materiais
-        </h1>
-        <p className="mt-2 text-[var(--brand-muted)]">
-          Abra cada material para conferir e registrar a sua aprovação.
-        </p>
+        <h1 className={pTitle}>Materiais</h1>
+        <p className={pLead}>Abra cada material para conferir e registrar a sua aprovação.</p>
       </header>
 
-      {preview ? (
-        <p className="rounded-2xl bg-white p-3 text-sm text-[var(--brand-muted)]">
-          Você está na visualização do painel. Aprovações e solicitações feitas
-          aqui ficam registradas como da equipe, em nome do cliente.
-        </p>
-      ) : null}
-
-      <div role="group" aria-label="Filtrar materiais" className="inline-flex rounded-full border border-[var(--brand-border)] p-1">
+      <div role="group" aria-label="Filtrar materiais" className={pSegWrap}>
         {[
           { label: `Aguardando (${waiting.length})`, href: "/cliente/materiais", on: !showApproved },
           { label: `Aprovados (${done.length})`, href: "/cliente/materiais?v=aprovados", on: showApproved },
         ].map((t) => (
-          <Link
-            key={t.label}
-            href={t.href}
-            aria-current={t.on ? "true" : undefined}
-            className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm ${
-              t.on ? "bg-[var(--brand-ink)] font-semibold text-[var(--brand-cream)]" : "text-[var(--brand-muted)]"
-            }`}
-          >
+          <Link key={t.label} href={t.href} aria-current={t.on ? "true" : undefined} className={pSeg(t.on)}>
             {t.label}
           </Link>
         ))}
@@ -74,33 +55,33 @@ export default async function MateriaisPage({
 
       {list.length ? (
         <Wrapper images={pickerImages}>
-        <ul>
-          {list.map((card) => (
-            <MaterialItem
-              key={card.id}
-              defaultOpen={card.id === open}
-              material={{
-                id: card.id,
-                title: card.title,
-                format: card.format,
-                dateLabel: card.post_date ? shortDate(card.post_date) : null,
-                cover_url: card.cover_url,
-                drive_url: card.drive_url,
-                caption: card.caption,
-                approved: Boolean(card.approved_at),
-                changesRequested: Boolean(card.changes_requested_at),
-                feedback: card.client_feedback,
-                approvedByTeam: Boolean(card.approver && card.approver.role !== "client"),
-                mediaIds: card.media_image_ids ?? [],
-                guide: card.guide,
-                items: media[card.id] ?? [],
-              }}
-            />
-          ))}
-        </ul>
+          <ul className={`${pCard} p-0`}>
+            {list.map((card) => (
+              <MaterialItem
+                key={card.id}
+                defaultOpen={card.id === open}
+                material={{
+                  id: card.id,
+                  title: card.title,
+                  format: card.format,
+                  dateLabel: card.post_date ? shortDate(card.post_date) : null,
+                  cover_url: card.cover_url,
+                  drive_url: card.drive_url,
+                  caption: card.caption,
+                  approved: Boolean(card.approved_at),
+                  changesRequested: Boolean(card.changes_requested_at),
+                  feedback: card.client_feedback,
+                  approvedByTeam: Boolean(card.approver && card.approver.role !== "client"),
+                  mediaIds: card.media_image_ids ?? [],
+                  guide: card.guide,
+                  items: media[card.id] ?? [],
+                }}
+              />
+            ))}
+          </ul>
         </Wrapper>
       ) : (
-        <p className="text-[var(--brand-muted)]">
+        <p className={`${pCard} text-[var(--p-muted)]`}>
           {showApproved ? "Nenhum material aprovado até o momento." : "Nenhum material aguardando aprovação."}
         </p>
       )}

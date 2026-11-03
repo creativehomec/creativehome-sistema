@@ -5,11 +5,12 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME, createSessionCookieValue } from "@/lib/auth";
 import { createUser, getUserByUsername, verifyPassword } from "@/lib/users";
 import { PREVIEW_COOKIE } from "@/lib/clientPortal";
+import { safeNext } from "@/lib/safeNext";
 
 export async function login(formData: FormData) {
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/admin");
+  const next = safeNext(String(formData.get("next") ?? ""));
   const secret = process.env.ADMIN_PASSWORD;
 
   if (!secret) {
@@ -44,7 +45,7 @@ export async function signup(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const passwordConfirm = String(formData.get("password_confirm") ?? "");
-  const next = String(formData.get("next") ?? "/admin");
+  const next = safeNext(String(formData.get("next") ?? ""));
   const secret = process.env.ADMIN_PASSWORD;
 
   function fail(error: string): never {

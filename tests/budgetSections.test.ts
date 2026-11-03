@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_BLUR,
+  PLACEHOLDER_LOGOS,
   SECTION_KINDS,
   blockTone,
   isEmpty,
@@ -134,7 +135,7 @@ describe("parseSections", () => {
     const logos = sections[3];
     const faq = sections[9];
     if (logos.kind !== "logos" || faq.kind !== "faq") throw new Error("kind inesperado");
-    expect(logos.data.logos).toEqual([{ name: "B", url: "/b.svg" }]);
+    expect(logos.data.logos).toEqual([{ name: "B", url: "/b.svg", photo: "" }]);
     expect(faq.data.items).toEqual([]);
   });
 });
@@ -277,10 +278,10 @@ describe("secoesPadrao", () => {
     expect((porKind.faq as { items: unknown[] }).items.length).toBe(3);
     expect((porKind.pricing as { packages: unknown[] }).packages.length).toBe(3);
 
-    // Listas que dependem de arquivo ficam vazias: sem imagem não há o que
-    // mostrar, e um item sem mídia seria um buraco na página.
+    // Portfólio depende de arquivo e fica vazio: um item sem mídia seria um
+    // buraco na página. Logos nascem com as empresas de exemplo, que já têm imagem.
     expect((porKind.portfolio as { projects: unknown[] }).projects).toEqual([]);
-    expect((porKind.logos as { logos: unknown[] }).logos).toEqual([]);
+    expect(porKind.logos).toMatchObject({ logos: PLACEHOLDER_LOGOS });
   });
 
   it("deixa os preços em zero para ninguém publicar um valor de exemplo", () => {

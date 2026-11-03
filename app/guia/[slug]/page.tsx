@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AlternativasCena, NotasProducao } from "@/components/AlternativasCena";
 import { notFound } from "next/navigation";
 import {
@@ -19,6 +20,13 @@ import { LightboxImage } from "@/components/LightboxImage";
 import { Accordion } from "@/components/Accordion";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { RichText } from "@/components/RichText";
+
+/** Telas do portal que abrem roteiro (`?de=portal&volta=…`) e o caminho de volta de cada uma. */
+const PORTAL_BACK = {
+  roteiros: { href: "/cliente/roteiros", label: "Roteiros" },
+  materiais: { href: "/cliente/materiais", label: "Materiais" },
+  calendario: { href: "/cliente/calendario", label: "Calendário" },
+} as const;
 
 // Pro cliente, "Ver original" só nos vídeos: em foto e carrossel o link pro
 // post tira a pessoa do guia sem mostrar nada a mais.
@@ -110,20 +118,29 @@ export default async function PublicGuidePage({
   searchParams,
 }: {
   params: Params;
-  searchParams: Promise<{ de?: string }>;
+  searchParams: Promise<{ de?: string; volta?: string }>;
 }) {
   const { slug } = await params;
-  const fromPortal = (await searchParams).de === "portal";
+  const query = await searchParams;
+  const fromPortal = query.de === "portal";
+  // Volta pra tela do portal de onde o roteiro foi aberto. Lista fechada: o
+  // valor vem da URL e não pode virar endereço qualquer.
+  const back = PORTAL_BACK[query.volta as keyof typeof PORTAL_BACK] ?? PORTAL_BACK.roteiros;
   const guide = await getGuideBySlugWithSections(slug);
 
   if (!guide) notFound();
 
   if (guide.status !== "published") {
     return (
-      <div className="flex min-h-svh items-center justify-center bg-neutral-50 px-4 text-center">
+      <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-neutral-50 px-4 text-center">
         <p className="text-sm text-neutral-500">
           Este guia ainda não foi publicado.
         </p>
+        {fromPortal ? (
+          <Link href={back.href} className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">
+            ‹ {back.label}
+          </Link>
+        ) : null}
       </div>
     );
   }
@@ -139,14 +156,15 @@ export default async function PublicGuidePage({
     <div className="min-h-svh bg-neutral-50">
       <AutoRefresh />
       {fromPortal ? (
-        <div className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
+        // Barra no tom escuro do portal: deixa claro que a volta é pro portal.
+        <div className="sticky top-0 z-30 bg-[var(--brand-ink)] text-[var(--brand-cream)]">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-[max(1rem,env(safe-area-inset-left),env(safe-area-inset-right))] pt-[env(safe-area-inset-top)]">
-            <a href="/cliente/roteiros" className="inline-flex min-h-12 items-center gap-1 text-sm font-medium">
-              ← Roteiros
-            </a>
-            <a href="/cliente" className="inline-flex min-h-12 items-center text-sm text-neutral-600 underline underline-offset-4">
-              Portal
-            </a>
+            <Link href={back.href} className="inline-flex min-h-12 items-center gap-1 text-sm font-semibold">
+              ‹ {back.label}
+            </Link>
+            <Link href="/cliente" className="inline-flex min-h-12 items-center text-sm opacity-80 underline underline-offset-4">
+              Início do portal
+            </Link>
           </div>
         </div>
       ) : null}

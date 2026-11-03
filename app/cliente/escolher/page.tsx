@@ -6,10 +6,9 @@ import { findClientLogo } from "@/lib/clientLogoMatch";
 import { listClientLogos } from "@/lib/clientLogos";
 import { listGalleryClients } from "@/lib/galleries";
 import { getCurrentSession } from "@/lib/session";
+import { pCard, pLead, pLink, pRow, pTitle } from "../portalUi";
 
 export const dynamic = "force-dynamic";
-
-const HEADING = { fontFamily: "Bootzy, sans-serif", letterSpacing: "0.02em" };
 
 /**
  * Tela do admin que abre o portal sem cliente escolhido: lista os clientes
@@ -27,30 +26,30 @@ export default async function EscolherClientePage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-4xl leading-none" style={HEADING}>
-          Ver o portal como…
-        </h1>
-        <p className="mt-2 text-[var(--brand-muted)]">
+        <h1 className={pTitle}>Ver o portal como…</h1>
+        <p className={pLead}>
           Escolha o cliente. O que você fizer na visualização fica registrado como da equipe, e o app lembra a sua escolha.
         </p>
       </header>
 
-      <ul>
+      <ul
+        className={`${pCard} p-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none`}
+      >
         {clients.map((client) => (
-          <li key={client.id} className="border-b border-[var(--brand-taupe)] last:border-b-0">
-            <Link
-              href={`/cliente/previa?cliente=${client.id}`}
-              className="flex min-h-[4.5rem] items-center gap-3 py-3 hover:text-[var(--brand-olive)]"
-            >
+          <li
+            key={client.id}
+            className={`${pRow} lg:rounded-[26px] lg:border lg:border-[var(--p-line)] lg:bg-[var(--p-glass)] lg:first:border-t`}
+          >
+            <Link href={`/cliente/previa?cliente=${client.id}`} className="flex min-h-[4.5rem] items-center gap-3 p-4">
               <ClientAvatar name={client.name} logoUrl={findClientLogo(client.name, logos)} size={48} />
-              <span className="min-w-0 flex-1 truncate font-medium">{client.name}</span>
-              <ChevronRight className="size-4 shrink-0 text-[var(--brand-muted)]" aria-hidden />
+              <span className="min-w-0 flex-1 truncate font-semibold">{client.name}</span>
+              <ChevronRight className="size-4 shrink-0 text-[var(--p-muted)]" aria-hidden />
             </Link>
           </li>
         ))}
       </ul>
 
-      <Link href="/admin/area-do-cliente" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">
+      <Link href="/admin/area-do-cliente" className={pLink}>
         ← Voltar ao painel
       </Link>
     </div>

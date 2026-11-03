@@ -7,22 +7,42 @@ import { listIdeas } from "@/lib/editorialCalendar";
 import { groupByMonth, MONTH_NAMES, nextMonths, todayISO } from "@/lib/editorialMonths";
 import { IdeaForm } from "../IdeaForm";
 import { MonthPlanner } from "./MonthPlanner";
+import { YearAccordion } from "./YearAccordion";
+import { pCard, pH2, pIconButton, pLead, pRow, pSeg, pSegWrap, pTitle } from "../portalUi";
 
 export const dynamic = "force-dynamic";
 
-const HEADING = { fontFamily: "Bootzy, sans-serif", letterSpacing: "0.02em" };
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function Arrow({ href, label, dir }: { href: string; label: string; dir: "l" | "r" }) {
   const Icon = dir === "l" ? ChevronLeft : ChevronRight;
   return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="grid size-11 place-items-center rounded-full border border-[var(--brand-border)] hover:bg-white/60"
-    >
+    <Link href={href} aria-label={label} className={pIconButton}>
       <Icon className="size-5" aria-hidden />
     </Link>
+  );
+}
+
+/** Setas + título do período (mês ou ano). Fica entre Ano/Mês e Sugerir ideia. */
+function PeriodNav({
+  prevHref,
+  prevLabel,
+  nextHref,
+  nextLabel,
+  title,
+}: {
+  prevHref: string;
+  prevLabel: string;
+  nextHref: string;
+  nextLabel: string;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Arrow href={prevHref} label={prevLabel} dir="l" />
+      <h2 className={`${pH2} min-w-[9.5rem] text-center tabular-nums`}>{title}</h2>
+      <Arrow href={nextHref} label={nextLabel} dir="r" />
+    </div>
   );
 }
 
@@ -41,37 +61,29 @@ export default async function CalendarioPage({
   const month = Math.min(12, Math.max(1, Number(params.mes) || now.getMonth() + 1));
 
   const tabs = (
-    <div role="group" aria-label="Modo de visualização" className="inline-flex rounded-full border border-[var(--brand-border)] p-1">
+    <div role="group" aria-label="Modo de visualização" className={pSegWrap}>
       {[
         { label: "Ano", href: `/cliente/calendario?vista=ano&ano=${year}`, on: !monthly },
         { label: "Mês", href: `/cliente/calendario?vista=mes&ano=${year}&mes=${month}`, on: monthly },
       ].map((t) => (
-        <Link
-          key={t.label}
-          href={t.href}
-          aria-current={t.on ? "true" : undefined}
-          className={`inline-flex min-h-10 items-center rounded-full px-5 text-sm ${
-            t.on ? "bg-[var(--brand-ink)] font-semibold text-[var(--brand-cream)]" : "text-[var(--brand-muted)]"
-          }`}
-        >
+        <Link key={t.label} href={t.href} aria-current={t.on ? "true" : undefined} className={pSeg(t.on)}>
           {t.label}
         </Link>
       ))}
     </div>
   );
 
-  const header = (
+  // Linha de controles: [Ano|Mês] [‹ período ›] [Sugerir ideia]. No celular o
+  // período desce para uma linha própria, de ponta a ponta.
+  const header = (period: React.ReactNode) => (
     <header className="space-y-4">
       <div>
-        <h1 className="text-4xl leading-none" style={HEADING}>
-          Calendário editorial
-        </h1>
-        <p className="mt-2 text-[var(--brand-muted)]">
-          Planejamento de conteúdo, programação de postagens e ideias de cada mês.
-        </p>
+        <h1 className={pTitle}>Calendário editorial</h1>
+        <p className={pLead}>Planejamento de conteúdo, programação de postagens e ideias de cada mês.</p>
       </div>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {tabs}
+        <div className="order-last flex w-full justify-center sm:order-none sm:w-auto">{period}</div>
         <IdeaForm months={nextMonths(now, 12)} readOnly={preview} />
       </div>
     </header>
@@ -91,37 +103,49 @@ export default async function CalendarioPage({
 
     return (
       <div className="space-y-6">
-        {header}
+        {header(
+          <PeriodNav
+            prevHref={link(prev)}
+            prevLabel="Mês anterior"
+            nextHref={link(next)}
+            nextLabel="Próximo mês"
+            title={`${MONTH_NAMES[month - 1]} ${year}`}
+          />,
+        )}
 
-        <div className="flex items-center justify-between">
-          <Arrow href={link(prev)} label="Mês anterior" dir="l" />
-          <h2 className="text-2xl" style={HEADING}>
-            {MONTH_NAMES[month - 1]} {year}
-          </h2>
-          <Arrow href={link(next)} label="Próximo mês" dir="r" />
-        </div>
-
-        <MonthPlanner key={`${year}-${month}`} year={year} month={month} today={today} posts={visible} />
-
-        <section aria-labelledby="ideias-mes">
-          <h3 id="ideias-mes" className="mb-2 text-xl font-semibold">
-            Ideias de {MONTH_NAMES[month - 1].toLowerCase()} <span className="text-base font-normal text-[var(--brand-muted)]">({monthIdeas.length})</span>
-          </h3>
-          {monthIdeas.length ? (
-            <ul className="space-y-2">
-              {monthIdeas.map((idea) => (
-                <li key={idea.id} className="rounded-2xl bg-white/60 px-4 py-3">
-                  <p className="font-medium">
-                    {idea.title} <CreatorTag idea={idea} viewerId={viewerId} />
-                  </p>
-                  {idea.notes ? <p className="whitespace-pre-line text-sm text-[var(--brand-muted)]">{idea.notes}</p> : null}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[var(--brand-muted)]">Nenhuma ideia registrada para este mês.</p>
-          )}
-        </section>
+        <MonthPlanner
+          key={`${year}-${month}`}
+          year={year}
+          month={month}
+          today={today}
+          posts={visible}
+          ideas={
+            <section aria-labelledby="ideias-mes" className="space-y-3">
+              <h3 id="ideias-mes" className={pH2}>
+                Ideias de {MONTH_NAMES[month - 1].toLowerCase()}{" "}
+                <span className="text-base font-normal text-[var(--p-muted)]">({monthIdeas.length})</span>
+              </h3>
+              <div className={`${pCard} p-0`}>
+                {monthIdeas.length ? (
+                  <ul>
+                    {monthIdeas.map((idea) => (
+                      <li key={idea.id} className={`${pRow} px-4 py-3`}>
+                        <p className="font-semibold">
+                          {idea.title} <CreatorTag idea={idea} viewerId={viewerId} />
+                        </p>
+                        {idea.notes ? (
+                          <p className="whitespace-pre-line text-sm text-[var(--p-muted)]">{idea.notes}</p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="p-4 text-[var(--p-muted)]">Nenhuma ideia registrada para este mês.</p>
+                )}
+              </div>
+            </section>
+          }
+        />
       </div>
     );
   }
@@ -139,93 +163,30 @@ export default async function CalendarioPage({
 
   return (
     <div className="space-y-6">
-      {header}
+      {header(
+        <PeriodNav
+          prevHref={`/cliente/calendario?vista=ano&ano=${year - 1}`}
+          prevLabel={`Ver ${year - 1}`}
+          nextHref={`/cliente/calendario?vista=ano&ano=${year + 1}`}
+          nextLabel={`Ver ${year + 1}`}
+          title={String(year)}
+        />,
+      )}
 
-      <div className="flex items-center gap-2">
-        <Arrow href={`/cliente/calendario?vista=ano&ano=${year - 1}`} label={`Ver ${year - 1}`} dir="l" />
-        <span className="min-w-16 text-center text-xl font-semibold tabular-nums">{year}</span>
-        <Arrow href={`/cliente/calendario?vista=ano&ano=${year + 1}`} label={`Ver ${year + 1}`} dir="r" />
-      </div>
-
-      <div className="space-y-2">
-        {months.map((ideas, index) => (
-          <details
-            key={index}
-            open={index === currentMonth || undefined}
-            className="group rounded-2xl bg-white/60 open:bg-white"
-          >
-            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3 [&::-webkit-details-marker]:hidden">
-              <span className={`text-xl ${ideas.length || postsByMonth[index].length ? "font-semibold" : "font-medium text-[var(--brand-muted)]"}`}>
-                {MONTH_NAMES[index]}
-                {index === currentMonth ? (
-                  <span className="ml-2 rounded-full bg-[var(--brand-ink)] px-2 py-0.5 align-middle text-[11px] font-medium text-[var(--brand-cream)]">
-                    mês atual
-                  </span>
-                ) : null}
-              </span>
-              <span className="flex items-center gap-2 text-sm text-[var(--brand-muted)]">
-                {postsByMonth[index].length ? (
-                  <span className="rounded-full bg-[var(--brand-olive)] px-3 py-1 text-sm font-semibold text-white">
-                    {postsByMonth[index].length} {postsByMonth[index].length === 1 ? "postagem" : "postagens"}
-                  </span>
-                ) : null}
-                {ideas.length ? (
-                  <span className="rounded-full bg-[var(--brand-ink)] px-3 py-1 text-sm font-semibold text-[var(--brand-cream)]">
-                    {ideas.length} {ideas.length === 1 ? "ideia" : "ideias"}
-                  </span>
-                ) : null}
-                {!ideas.length && !postsByMonth[index].length ? "vazio" : null}
-                <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden />
-              </span>
-            </summary>
-            <div className="space-y-4 px-4 pb-4">
-              {postsByMonth[index].length ? (
-                <section aria-label={`Postagens de ${MONTH_NAMES[index]}`}>
-                  <h3 className="mb-1 text-sm font-semibold text-[var(--brand-muted)]">Postagens</h3>
-                  <ul>
-                    {postsByMonth[index].map((p) => (
-                      <li key={p.id} className="flex items-center gap-3 border-b border-[var(--brand-taupe)] py-2 last:border-b-0">
-                        <span className="grid w-10 shrink-0 place-items-center rounded-lg bg-[var(--brand-ink)] py-1 text-[var(--brand-cream)]">
-                          <span className="text-base font-semibold leading-none">{Number(p.post_date.slice(8, 10))}</span>
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium">{p.title || "Sem título"}</span>
-                          <span className="block text-sm capitalize text-[var(--brand-muted)]">{p.format}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-
-              <section aria-label={`Ideias de ${MONTH_NAMES[index]}`}>
-                <h3 className="mb-1 text-sm font-semibold text-[var(--brand-muted)]">Ideias</h3>
-                {ideas.length ? (
-                  <ul className="list-disc space-y-2 pl-5 marker:text-[var(--brand-olive)]">
-                    {ideas.map((idea) => (
-                      <li key={idea.id}>
-                        <span className="font-medium">{idea.title}</span>{" "}
-                        <CreatorTag idea={idea} viewerId={viewerId} />
-                        {idea.notes ? (
-                          <span className="block whitespace-pre-line text-sm text-[var(--brand-muted)]">{idea.notes}</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-[var(--brand-muted)]">Nenhuma ideia registrada para este mês.</p>
-                )}
-              </section>
-              <Link
-                href={`/cliente/calendario?vista=mes&ano=${year}&mes=${index + 1}`}
-                className="inline-flex min-h-11 items-center gap-1 text-sm font-medium underline underline-offset-4"
-              >
-                Ver programação do mês <ChevronRight className="size-4" aria-hidden />
-              </Link>
-            </div>
-          </details>
-        ))}
-      </div>
+      <YearAccordion
+        year={year}
+        currentMonth={currentMonth}
+        viewerId={viewerId}
+        months={months.map((ideas, index) => ({
+          ideas,
+          posts: postsByMonth[index].map((p) => ({
+            id: p.id,
+            title: p.title,
+            format: p.format,
+            post_date: p.post_date,
+          })),
+        }))}
+      />
     </div>
   );
 }
