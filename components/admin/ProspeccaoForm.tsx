@@ -1,14 +1,29 @@
 "use client";
 
-import { Download, Loader2, Search } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Search, TriangleAlert } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ProspeccaoResultados } from "@/components/admin/ProspeccaoResultados";
+import { toLeads, type Lead } from "@/lib/prospeccaoCsv";
 
-const campo = "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm";
+const controle =
+  "min-h-11 w-full rounded-lg border border-neutral-300 bg-white px-3 text-base focus:border-neutral-500 focus:outline-none";
+const foco =
+  "focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none";
+
+const slug = (s: string) =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+type Resultado = { csv: Blob; nome: string; leads: Lead[] };
 
 export function ProspeccaoForm() {
+  const [cidades, setCidades] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<{ url: string; nome: string; linhas: number } | null>(null);
+  const [resultado, setResultado] = useState<Resultado | null>(null);
+
+  useEffect(() => {
+    fetch("/cidades-br.json").then((r) => r.json()).then(setCidades).catch(() => {});
+  }, []);
 
   async function buscar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,11 +50,12 @@ export function ProspeccaoForm() {
         const j = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(j?.error ?? `Erro ${res.status}`);
       }
-      const blob = await res.blob();
-      const texto = await blob.text();
-      const linhas = Math.max(0, texto.trim().split("\n").length - 1);
-      const nome = `${String(f.get("nicho")).trim()}-${String(f.get("cidade")).trim()}.csv`.replace(/\s+/g, "-");
-      setResultado({ url: URL.createObjectURL(blob), nome, linhas });
+      const csv = await res.blob();
+      setResultado({
+        csv,
+        nome: `${slug(String(f.get("nicho")))}-${slug(String(f.get("cidade")))}.csv`,
+        leads: toLeads(await csv.text()),
+      });
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Falha na busca");
     } finally {
@@ -47,57 +63,98 @@ export function ProspeccaoForm() {
     }
   }
 
+  function baixar() {
+    if (!resultado) return;
+    const url = URL.createObjectURL(resultado.csv);
+    const a = Object.assign(document.createElement("a"), { href: url, download: resultado.nome });
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
-    <form onSubmit={buscar} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-1 text-sm font-medium">
-          O quê
-          <input name="nicho" required maxLength={80} placeholder="dentistas, academias, restaurantes…" className={campo} />
-        </label>
-        <label className="space-y-1 text-sm font-medium">
-          Onde
-          <input name="cidade" required maxLength={80} placeholder="Curitiba, PR" className={campo} />
-        </label>
-        <label className="space-y-1 text-sm font-medium">
-          Quantidade
-          <select name="profundidade" defaultValue="3" className={campo}>
-            <option value="1">~20 empresas</option>
-            <option value="3">~60 empresas</option>
-            <option value="5">~100 empresas</option>
-          </select>
-        </label>
-        <label className="space-y-1 text-sm font-medium">
-          Nota mínima
-          <select name="minNota" defaultValue="0" className={campo}>
-            <option value="0">Qualquer</option>
-            <option value="4">4,0 ou mais</option>
-            <option value="4.5">4,5 ou mais</option>
-          </select>
-        </label>
-      </div>
-      <fieldset className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-        <label className="flex items-center gap-2"><input type="checkbox" name="semSite" /> Só quem não tem site</label>
-        <label className="flex items-center gap-2"><input type="checkbox" name="comTelefone" /> Só com telefone</label>
-        <label className="flex items-center gap-2"><input type="checkbox" name="comEmail" /> Só com e-mail</label>
-        <label className="flex items-center gap-2"><input type="checkbox" name="cidadeInteira" /> Cidade inteira (mais lento)</label>
-      </fieldset>
-      <button
-        disabled={busy}
-        className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-      >
-        {busy ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Search aria-hidden="true" className="size-4" />}
-        {busy ? "Buscando… pode levar alguns minutos" : "Buscar"}
-      </button>
-      {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
-      {resultado && (
-        <a
-          href={resultado.url}
-          download={resultado.nome}
-          className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium"
-        >
-          <Download aria-hidden="true" className="size-4" /> Baixar planilha ({resultado.linhas} empresas)
-        </a>
-      )}
-    </form>
+    <div className="space-y-6">
+      <form onSubmit={buscar} className="space-y-5 rounded-xl border border-neutral-200 bg-white p-4 sm:p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-1.5 text-sm font-medium text-neutral-800">
+            O quê
+            <input name="nicho" required maxLength={80} placeholder="dentistas, academias, restaurantes…" className={controle} />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-neutral-800">
+            Onde
+            <input
+              name="cidade"
+              required
+              maxLength={80}
+              list="cidades-br"
+              autoComplete="off"
+              placeholder="Curitiba, PR"
+              className={controle}
+            />
+            <datalist id="cidades-br">
+              {cidades.map((c) => <option key={c} value={c} />)}
+            </datalist>
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-neutral-800">
+            Quantidade
+            <select name="profundidade" defaultValue="3" className={controle}>
+              <option value="1">~20 empresas</option>
+              <option value="3">~60 empresas</option>
+              <option value="5">~100 empresas</option>
+            </select>
+          </label>
+          <label className="space-y-1.5 text-sm font-medium text-neutral-800">
+            Nota mínima
+            <select name="minNota" defaultValue="0" className={controle}>
+              <option value="0">Qualquer</option>
+              <option value="4">4,0 ou mais</option>
+              <option value="4.5">4,5 ou mais</option>
+            </select>
+          </label>
+        </div>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-neutral-800">Filtros</legend>
+          <div className="flex flex-wrap gap-2">
+            {[
+              ["semSite", "Só quem não tem site"],
+              ["comTelefone", "Só com telefone"],
+              ["comEmail", "Só com e-mail"],
+              ["cidadeInteira", "Cidade inteira (mais lento)"],
+            ].map(([nome, rotulo]) => (
+              <label
+                key={nome}
+                className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-neutral-300 px-3 text-base has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-neutral-900 has-[:focus-visible]:ring-offset-2"
+              >
+                <input type="checkbox" name={nome} className="size-4 accent-neutral-900 focus:outline-none" />
+                {rotulo}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            disabled={busy}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-lg bg-neutral-900 px-5 text-base font-medium text-white transition-transform active:scale-[0.97] disabled:opacity-60 ${foco}`}
+          >
+            {busy ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Search aria-hidden="true" className="size-4" />}
+            {busy ? "Buscando…" : "Buscar"}
+          </button>
+          <p role="status" className="text-sm text-neutral-600">
+            {busy && "Pode levar de 1 a 5 minutos. Não feche esta página."}
+          </p>
+        </div>
+
+        {erro && (
+          <p role="alert" className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+            {erro}
+          </p>
+        )}
+      </form>
+
+      {resultado && <ProspeccaoResultados leads={resultado.leads} onBaixar={baixar} />}
+    </div>
   );
 }
+

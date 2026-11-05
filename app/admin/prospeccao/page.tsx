@@ -13,9 +13,9 @@ export default async function ProspeccaoPage() {
         trail={[{ label: "Admin", href: "/admin" }, { label: "Prospecção" }]}
         username={username}
       />
-      <main className="mx-auto w-full max-w-3xl px-4 py-8">
-        <p className="mb-6 text-sm text-neutral-600">
-          Busca empresas no Google Maps e baixa uma planilha com telefone, e-mail, site e redes sociais.
+      <main className="mx-auto w-full max-w-5xl px-4 py-8">
+        <p className="mb-6 w-fit max-w-full rounded-lg bg-white/90 px-3 py-2 text-sm text-neutral-700 backdrop-blur-sm">
+          Busca empresas no Google Maps e mostra telefone, e-mail, site e Instagram, com planilha para baixar.
           Só funciona no Mac que tem o scraper instalado.
         </p>
         <ProspeccaoForm />
