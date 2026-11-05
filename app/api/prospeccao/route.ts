@@ -11,7 +11,6 @@ import { normalizarCidade, normalizarNicho } from "@/lib/normalizar";
 import { salvarBusca } from "@/lib/prospeccao";
 import { getAllowedFeatures, getCurrentSession } from "@/lib/session";
 
-export const maxDuration = 600;
 const run = promisify(execFile);
 
 /** Pasta do google-maps-scraper-kit; só existe no Mac onde ele foi instalado. */
