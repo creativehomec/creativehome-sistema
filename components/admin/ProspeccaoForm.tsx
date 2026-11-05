@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { abrirBuscaAction, apagarBuscaAction, marcarContatadoAction } from "@/app/admin/prospeccao/actions";
 import { ProspeccaoResultados, idDe } from "@/components/admin/ProspeccaoResultados";
+import { CATEGORIAS_GMB } from "@/lib/categoriasGmb";
 import type { BuscaResumo } from "@/lib/prospeccao";
 import { toLeads, type Lead } from "@/lib/prospeccaoCsv";
 
@@ -18,6 +19,8 @@ const slug = (s: string) =>
 
 type Resultado = { csv: Blob; nome: string; leads: Lead[] };
 
+const CIDADE_PADRAO = "Luís Eduardo Magalhães, BA";
+
 const quando = (iso: string) =>
   new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
@@ -26,6 +29,7 @@ export function ProspeccaoForm({ historico, contatados: iniciais }: { historico:
   const [contatados, setContatados] = useState(() => new Set(iniciais));
   const [cidades, setCidades] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [buscou, setBuscou] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
@@ -60,9 +64,13 @@ export function ProspeccaoForm({ historico, contatados: iniciais }: { historico:
       }
       const csv = await res.blob();
       router.refresh(); // recarrega o histórico, que o servidor acabou de gravar
+      // O servidor devolve nicho e cidade já corrigidos (acento, digitação).
+      const nicho = decodeURIComponent(res.headers.get("X-Nicho") ?? String(f.get("nicho")));
+      const cidade = decodeURIComponent(res.headers.get("X-Cidade") ?? String(f.get("cidade")));
+      setBuscou(`${nicho} em ${cidade}`);
       setResultado({
         csv,
-        nome: `${slug(String(f.get("nicho")))}-${slug(String(f.get("cidade")))}.csv`,
+        nome: `${slug(nicho)}-${slug(cidade)}.csv`,
         leads: toLeads(await csv.text()),
       });
     } catch (err) {
@@ -76,6 +84,7 @@ export function ProspeccaoForm({ historico, contatados: iniciais }: { historico:
     setErro(null);
     const texto = await abrirBuscaAction(b.id);
     if (texto === null) return setErro("Não consegui abrir essa busca.");
+    setBuscou(`${b.nicho} em ${b.cidade}`);
     setResultado({ csv: new Blob([texto], { type: "text/csv" }), nome: `${slug(b.nicho)}-${slug(b.cidade)}.csv`, leads: toLeads(texto) });
   }
 
@@ -115,7 +124,18 @@ export function ProspeccaoForm({ historico, contatados: iniciais }: { historico:
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-sm font-medium text-neutral-800">
             O quê
-            <input name="nicho" required maxLength={80} placeholder="dentistas, academias, restaurantes…" className={controle} />
+            <input
+              name="nicho"
+              required
+              maxLength={80}
+              list="categorias-gmb"
+              autoComplete="off"
+              placeholder="Escolha ou digite: Dentista, Academia…"
+              className={controle}
+            />
+            <datalist id="categorias-gmb">
+              {CATEGORIAS_GMB.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </label>
           <label className="space-y-1.5 text-sm font-medium text-neutral-800">
             Onde
@@ -125,7 +145,8 @@ export function ProspeccaoForm({ historico, contatados: iniciais }: { historico:
               maxLength={80}
               list="cidades-br"
               autoComplete="off"
-              placeholder="Curitiba, PR"
+              defaultValue={CIDADE_PADRAO}
+              placeholder="Luís Eduardo Magalhães, BA"
               className={controle}
             />
             <datalist id="cidades-br">
@@ -221,6 +242,8 @@ export function ProspeccaoForm({ historico, contatados: iniciais }: { historico:
           </ul>
         </section>
       )}
+
+      {resultado && buscou && <p className="rounded-lg bg-white/90 px-3 py-2 text-sm text-neutral-700">Busca feita por: <b>{buscou}</b></p>}
 
       {resultado && <ProspeccaoResultados leads={resultado.leads} contatados={contatados} onMarcar={marcar} onBaixar={baixar} />}
     </div>

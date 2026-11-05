@@ -1,10 +1,10 @@
 "use client";
 
 import { ArrowUpDown, AtSign, ChevronDown, ChevronUp, Download, Plus, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Lead } from "@/lib/prospeccaoCsv";
 
-const POR_PAGINA = 10;
+const LOTE = 20;
 const foco =
   "focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 focus-visible:outline-none";
 const link = `rounded text-neutral-900 underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-900 ${foco}`;
@@ -52,7 +52,8 @@ export function ProspeccaoResultados({
 }) {
   const [ativos, setAtivos] = useState<FiltroKey[]>([]);
   const [ordem, setOrdem] = useState<{ por: Ordem; desc: boolean }>({ por: "nota", desc: true });
-  const [pagina, setPagina] = useState(0);
+  const [mostrar, setMostrar] = useState(LOTE);
+  const fim = useRef<HTMLDivElement>(null);
 
   const linhas = useMemo(() => {
     const f = leads.filter((l) => ativos.every((k) => FILTROS[k].ok(l, contatados)));
@@ -63,18 +64,25 @@ export function ProspeccaoResultados({
     });
   }, [leads, ativos, ordem, contatados]);
 
-  const paginas = Math.max(1, Math.ceil(linhas.length / POR_PAGINA));
-  const atual = Math.min(pagina, paginas - 1);
-  const visiveis = linhas.slice(atual * POR_PAGINA, (atual + 1) * POR_PAGINA);
+  const visiveis = linhas.slice(0, mostrar);
+
+  // Scroll infinito: ao chegar no fim da tabela, mostra mais um lote.
+  useEffect(() => {
+    const el = fim.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((e) => e[0].isIntersecting && setMostrar((m) => m + LOTE), { rootMargin: "400px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [linhas.length, mostrar]);
   const disponiveis = (Object.keys(FILTROS) as FiltroKey[]).filter((k) => !ativos.includes(k));
 
   function alternar(k: FiltroKey) {
     setAtivos((a) => (a.includes(k) ? a.filter((x) => x !== k) : [...a, k]));
-    setPagina(0);
+    setMostrar(LOTE);
   }
   function ordenar(por: Ordem) {
     setOrdem((o) => ({ por, desc: o.por === por ? !o.desc : por !== "nome" }));
-    setPagina(0);
+    setMostrar(LOTE);
   }
 
   const cab = (por: Ordem, rotulo: string) => {
@@ -198,18 +206,8 @@ export function ProspeccaoResultados({
             </tbody>
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 px-3 py-2 text-sm text-neutral-600">
-          <span>
-            Mostrando {linhas.length ? atual * POR_PAGINA + 1 : 0}–{Math.min((atual + 1) * POR_PAGINA, linhas.length)} de {linhas.length}
-          </span>
-          <div className="flex gap-2">
-            <button type="button" disabled={atual === 0} onClick={() => setPagina(atual - 1)} className={`min-h-9 rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 disabled:opacity-40 ${foco}`}>
-              Anterior
-            </button>
-            <button type="button" disabled={atual >= paginas - 1} onClick={() => setPagina(atual + 1)} className={`min-h-9 rounded-lg border border-neutral-200 px-3 hover:bg-neutral-50 disabled:opacity-40 ${foco}`}>
-              Próximo
-            </button>
-          </div>
+        <div ref={fim} className="border-t border-neutral-100 px-3 py-2 text-sm text-neutral-600">
+          Mostrando {visiveis.length} de {linhas.length}
         </div>
       </div>
     </section>

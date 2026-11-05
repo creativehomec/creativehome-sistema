@@ -5,6 +5,9 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { NextResponse } from "next/server";
+import cidadesBr from "@/public/cidades-br.json";
+import { CATEGORIAS_GMB } from "@/lib/categoriasGmb";
+import { normalizarCidade, normalizarNicho } from "@/lib/normalizar";
 import { salvarBusca } from "@/lib/prospeccao";
 import { getAllowedFeatures, getCurrentSession } from "@/lib/session";
 
@@ -27,10 +30,16 @@ export async function POST(request: Request) {
   }
 
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const nicho = texto(b?.nicho);
-  const cidade = texto(b?.cidade);
+  const nichoBruto = texto(b?.nicho);
+  const cidadeBruta = texto(b?.cidade);
   // Começar com "-" viraria flag do scrape.py.
-  if (!nicho || !cidade || nicho.startsWith("-") || cidade.startsWith("-")) {
+  if (!nichoBruto || !cidadeBruta || nichoBruto.startsWith("-") || cidadeBruta.startsWith("-")) {
+    return NextResponse.json({ error: "Preencha o quê e onde." }, { status: 400 });
+  }
+  // Corrige acento e erro de digitação antes de buscar e de guardar no histórico.
+  const nicho = normalizarNicho(nichoBruto, CATEGORIAS_GMB);
+  const cidade = normalizarCidade(cidadeBruta, cidadesBr);
+  if (nicho.startsWith("-") || cidade.startsWith("-")) {
     return NextResponse.json({ error: "Preencha o quê e onde." }, { status: 400 });
   }
   const profundidade = [1, 3, 5].includes(Number(b?.profundidade)) ? Number(b?.profundidade) : 3;
@@ -52,7 +61,7 @@ export async function POST(request: Request) {
     // Sem a migration 0075 aplicada o histórico falha, mas o resultado da busca não se perde.
     const total = Math.max(0, csv.trim().split("\n").length - 1);
     const id = await salvarBusca(session.userId, { nicho, cidade, total, csv }).catch(() => null);
-    return new Response(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", ...(id ? { "X-Busca-Id": id } : {}) } });
+    return new Response(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "X-Nicho": encodeURIComponent(nicho), "X-Cidade": encodeURIComponent(cidade), ...(id ? { "X-Busca-Id": id } : {}) } });
   } catch (err) {
     const msg = err instanceof Error ? err.message.slice(0, 200) : "falha";
     return NextResponse.json({ error: `A busca falhou: ${msg}` }, { status: 500 });
