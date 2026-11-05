@@ -10,6 +10,7 @@ import {
   Pin,
   PenLine,
   Receipt,
+  Search,
   ScrollText,
   Users,
   type LucideIcon,
@@ -39,6 +40,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/admin/backlog", label: "Entregas", icon: Kanban, features: ["backlog"], group: "Rotina" },
   { href: "/admin/agenda", label: "Minha Agenda", icon: CalendarClock, features: ["agenda"], group: "Rotina" },
   { href: "/admin/armazenamento", label: "Armazenamento", icon: HardDrive, features: ["armazenamento"], group: "Rotina" },
+  { href: "/admin/prospeccao", label: "Prospecção", icon: Search, features: ["prospeccao"], group: "Clientes" },
 ];
 
 export const ADMIN_USERS_ITEM: AdminNavItem = {

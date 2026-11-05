@@ -20,6 +20,7 @@ export const FEATURES = [
   { key: "referencias", label: "Mural de referências" },
   { key: "armazenamento", label: "Armazenamento" },
   { key: "area-do-cliente", label: "Área do cliente" },
+  { key: "prospeccao", label: "Prospecção (Google Maps)" },
 ] as const;
 
 export type FeatureKey = (typeof FEATURES)[number]["key"];
