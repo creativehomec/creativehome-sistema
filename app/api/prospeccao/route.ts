@@ -5,6 +5,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { NextResponse } from "next/server";
+import { salvarBusca } from "@/lib/prospeccao";
 import { getAllowedFeatures, getCurrentSession } from "@/lib/session";
 
 export const maxDuration = 600;
@@ -47,8 +48,11 @@ export async function POST(request: Request) {
   try {
     await run("python3", ["scripts/engine.py", "start"], { cwd: KIT, timeout: 120_000 }).catch(() => {});
     await run("python3", args, { cwd: KIT, timeout: 580_000 });
-    const csv = await readFile(out);
-    return new Response(csv, { headers: { "Content-Type": "text/csv; charset=utf-8" } });
+    const csv = await readFile(out, "utf8");
+    // Sem a migration 0075 aplicada o histórico falha, mas o resultado da busca não se perde.
+    const total = Math.max(0, csv.trim().split("\n").length - 1);
+    const id = await salvarBusca(session.userId, { nicho, cidade, total, csv }).catch(() => null);
+    return new Response(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", ...(id ? { "X-Busca-Id": id } : {}) } });
   } catch (err) {
     const msg = err instanceof Error ? err.message.slice(0, 200) : "falha";
     return NextResponse.json({ error: `A busca falhou: ${msg}` }, { status: 500 });

@@ -1,8 +1,11 @@
 "use client";
 
-import { Loader2, Search, TriangleAlert } from "lucide-react";
+import { History, Loader2, Search, Trash2, TriangleAlert } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ProspeccaoResultados } from "@/components/admin/ProspeccaoResultados";
+import { abrirBuscaAction, apagarBuscaAction, marcarContatadoAction } from "@/app/admin/prospeccao/actions";
+import { ProspeccaoResultados, idDe } from "@/components/admin/ProspeccaoResultados";
+import type { BuscaResumo } from "@/lib/prospeccao";
 import { toLeads, type Lead } from "@/lib/prospeccaoCsv";
 
 const controle =
@@ -15,7 +18,12 @@ const slug = (s: string) =>
 
 type Resultado = { csv: Blob; nome: string; leads: Lead[] };
 
-export function ProspeccaoForm() {
+const quando = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+
+export function ProspeccaoForm({ historico, contatados: iniciais }: { historico: BuscaResumo[]; contatados: string[] }) {
+  const router = useRouter();
+  const [contatados, setContatados] = useState(() => new Set(iniciais));
   const [cidades, setCidades] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -51,6 +59,7 @@ export function ProspeccaoForm() {
         throw new Error(j?.error ?? `Erro ${res.status}`);
       }
       const csv = await res.blob();
+      router.refresh(); // recarrega o histórico, que o servidor acabou de gravar
       setResultado({
         csv,
         nome: `${slug(String(f.get("nicho")))}-${slug(String(f.get("cidade")))}.csv`,
@@ -60,6 +69,35 @@ export function ProspeccaoForm() {
       setErro(err instanceof Error ? err.message : "Falha na busca");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function abrir(b: BuscaResumo) {
+    setErro(null);
+    const texto = await abrirBuscaAction(b.id);
+    if (texto === null) return setErro("Não consegui abrir essa busca.");
+    setResultado({ csv: new Blob([texto], { type: "text/csv" }), nome: `${slug(b.nicho)}-${slug(b.cidade)}.csv`, leads: toLeads(texto) });
+  }
+
+  async function apagar(b: BuscaResumo) {
+    if (await apagarBuscaAction(b.id)) router.refresh();
+    else setErro("Não consegui apagar essa busca.");
+  }
+
+  async function marcar(l: Lead) {
+    const id = idDe(l);
+    const marcar = !contatados.has(id);
+    const aplicar = (on: boolean) =>
+      setContatados((atual) => {
+        const novo = new Set(atual);
+        if (on) novo.add(id);
+        else novo.delete(id);
+        return novo;
+      });
+    aplicar(marcar);
+    if (!(await marcarContatadoAction(id, marcar))) {
+      aplicar(!marcar);
+      setErro("Não consegui salvar a marcação. Tente de novo.");
     }
   }
 
@@ -153,7 +191,38 @@ export function ProspeccaoForm() {
         )}
       </form>
 
-      {resultado && <ProspeccaoResultados leads={resultado.leads} onBaixar={baixar} />}
+            {historico.length > 0 && (
+        <section aria-label="Buscas recentes" className="space-y-2 rounded-xl border border-neutral-200 bg-white p-4">
+          <h2 className="flex items-center gap-2 text-sm font-medium text-neutral-800">
+            <History aria-hidden="true" className="size-4" /> Buscas recentes
+            <span className="font-normal text-neutral-500">· ficam guardadas por 30 dias</span>
+          </h2>
+          <ul className="divide-y divide-neutral-100">
+            {historico.map((b) => (
+              <li key={b.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => abrir(b)}
+                  className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 rounded px-1 text-left text-base hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none"
+                >
+                  <span className="truncate">{b.nicho} · {b.cidade}</span>
+                  <span className="shrink-0 text-sm text-neutral-500 tabular-nums">{b.total} · {quando(b.criadaEm)}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => apagar(b)}
+                  aria-label={`Apagar busca ${b.nicho} em ${b.cidade}`}
+                  className="grid size-11 shrink-0 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none"
+                >
+                  <Trash2 aria-hidden="true" className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {resultado && <ProspeccaoResultados leads={resultado.leads} contatados={contatados} onMarcar={marcar} onBaixar={baixar} />}
     </div>
   );
 }

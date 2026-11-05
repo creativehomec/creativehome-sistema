@@ -18,19 +18,10 @@ const FILTROS = {
   naoContatado: { campo: "Contato", rotulo: "Ainda não", ok: (l: Lead, c: Contatados) => !c.has(idDe(l)) },
 } as const;
 
-/** Mesma empresa em buscas diferentes tem o mesmo nome e endereço. */
-const idDe = (l: Lead) => `${l.nome}|${l.endereco}`;
-const CHAVE = "prospeccao-contatados";
-
-/** Só neste navegador: não é dado compartilhado com a equipe. */
-function lerContatados(): Contatados {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(CHAVE) ?? "[]") as string[]);
-  } catch {
-    return new Set();
-  }
-}
 type FiltroKey = keyof typeof FILTROS;
+
+/** Mesma empresa em buscas diferentes tem o mesmo nome e endereço. */
+export const idDe = (l: Lead) => `${l.nome}|${l.endereco}`;
 
 type Ordem = "nome" | "nota" | "avaliacoes";
 const num = (s: string) => Number(s.replace(",", ".")) || 0;
@@ -48,23 +39,20 @@ function Selo({ nota }: { nota: string }) {
   );
 }
 
-export function ProspeccaoResultados({ leads, onBaixar }: { leads: Lead[]; onBaixar: () => void }) {
+export function ProspeccaoResultados({
+  leads,
+  contatados,
+  onMarcar,
+  onBaixar,
+}: {
+  leads: Lead[];
+  contatados: Contatados;
+  onMarcar: (l: Lead) => void;
+  onBaixar: () => void;
+}) {
   const [ativos, setAtivos] = useState<FiltroKey[]>([]);
   const [ordem, setOrdem] = useState<{ por: Ordem; desc: boolean }>({ por: "nota", desc: true });
   const [pagina, setPagina] = useState(0);
-  // O componente só monta depois da busca, no cliente: ler o localStorage aqui é seguro.
-  const [contatados, setContatados] = useState<Contatados>(lerContatados);
-
-  function marcar(l: Lead) {
-    setContatados((atual) => {
-      const novo = new Set(atual);
-      if (!novo.delete(idDe(l))) novo.add(idDe(l));
-      try {
-        localStorage.setItem(CHAVE, JSON.stringify([...novo]));
-      } catch {}
-      return novo;
-    });
-  }
 
   const linhas = useMemo(() => {
     const f = leads.filter((l) => ativos.every((k) => FILTROS[k].ok(l, contatados)));
@@ -165,7 +153,7 @@ export function ProspeccaoResultados({ leads, onBaixar }: { leads: Lead[]; onBai
                     <input
                       type="checkbox"
                       checked={contatados.has(idDe(l))}
-                      onChange={() => marcar(l)}
+                      onChange={() => onMarcar(l)}
                       aria-label={`Já entrei em contato com ${l.nome}`}
                       className="size-5 cursor-pointer accent-neutral-900"
                     />
