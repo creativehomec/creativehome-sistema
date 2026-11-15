@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "sem acesso" }, { status: 403 });
   }
   if (!existsSync(join(KIT, "scripts", "scrape.py"))) {
-    return NextResponse.json({ error: "Scraper não instalado neste servidor. Use o sistema rodando no Mac." }, { status: 503 });
+    return NextResponse.json({ error: "Scraper não instalado neste servidor. Abra o sistema pelo app CreativeHome no Mac." }, { status: 503 });
   }
 
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
