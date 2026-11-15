@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")"
 APP="dist/CreativeHome.app"
 rm -rf dist && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-swiftc -O -swift-version 5 main.swift Discos.swift Onboarding.swift -o "$APP/Contents/MacOS/CreativeHome"
+swiftc -O -swift-version 5 main.swift Discos.swift Onboarding.swift Prospeccao.swift -o "$APP/Contents/MacOS/CreativeHome"
 cp Info.plist "$APP/Contents/Info.plist"
 cp icon.icns "$APP/Contents/Resources/icon.icns"
 codesign --force --sign - "$APP"

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { abrirBuscaAction, apagarBuscaAction, marcarContatadoAction } from "@/app/admin/prospeccao/actions";
 import { ProspeccaoResultados, idDe } from "@/components/admin/ProspeccaoResultados";
 import { CATEGORIAS_GMB } from "@/lib/categoriasGmb";
+import { normalizarCidade, normalizarNicho } from "@/lib/normalizar";
 import type { BuscaResumo } from "@/lib/prospeccao";
 import { toLeads, type Lead } from "@/lib/prospeccaoCsv";
 
@@ -18,6 +19,34 @@ const slug = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 type Resultado = { csv: Blob; nome: string; leads: Lead[] };
+
+type Params = {
+  nicho: string; cidade: string; profundidade: number; minNota: number;
+  semSite: boolean; comTelefone: boolean; comEmail: boolean; cidadeInteira: boolean;
+};
+
+/** Ponte que o app do Mac abre na página (window.webkit.messageHandlers.guia). No navegador comum não existe. */
+function ponte() {
+  return (
+    window as unknown as { webkit?: { messageHandlers?: { guia?: { postMessage(m: unknown): void } } } }
+  ).webkit?.messageHandlers?.guia;
+}
+
+/** Pede ao app do Mac para rodar o scraper e espera o CSV (evento guia-prospeccao). */
+function buscarNoApp(p: Params): Promise<string> {
+  const id = crypto.randomUUID();
+  return new Promise((resolve, reject) => {
+    function fim(e: Event) {
+      const d = (e as CustomEvent<{ id: string; ok: boolean; csv?: string; erro?: string }>).detail;
+      if (d?.id !== id) return;
+      window.removeEventListener("guia-prospeccao", fim);
+      if (d.ok && typeof d.csv === "string") resolve(d.csv);
+      else reject(new Error(d.erro ?? "A busca falhou."));
+    }
+    window.addEventListener("guia-prospeccao", fim);
+    ponte()?.postMessage({ acao: "prospectar", id, ...p });
+  });
+}
 
 const CIDADE_PADRAO = "Luís Eduardo Magalhães, BA";
 
@@ -44,35 +73,48 @@ export function ProspeccaoForm({ historico, contatados: iniciais }: { historico:
     setErro(null);
     setResultado(null);
     try {
-      const res = await fetch("/api/prospeccao", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nicho: f.get("nicho"),
-          cidade: f.get("cidade"),
-          profundidade: Number(f.get("profundidade")),
-          minNota: Number(f.get("minNota")) || 0,
-          semSite: f.get("semSite") === "on",
-          comTelefone: f.get("comTelefone") === "on",
-          comEmail: f.get("comEmail") === "on",
-          cidadeInteira: f.get("cidadeInteira") === "on",
-        }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(j?.error ?? `Erro ${res.status}`);
+      const p: Params = {
+        nicho: String(f.get("nicho")),
+        cidade: String(f.get("cidade")),
+        profundidade: Number(f.get("profundidade")),
+        minNota: Number(f.get("minNota")) || 0,
+        semSite: f.get("semSite") === "on",
+        comTelefone: f.get("comTelefone") === "on",
+        comEmail: f.get("comEmail") === "on",
+        cidadeInteira: f.get("cidadeInteira") === "on",
+      };
+      let csv: Blob;
+      let nicho = p.nicho;
+      let cidade = p.cidade;
+      if (ponte()) {
+        // Dentro do app do Mac: o scraper roda aqui e a página só guarda o resultado no histórico.
+        nicho = normalizarNicho(p.nicho, CATEGORIAS_GMB);
+        cidade = normalizarCidade(p.cidade, cidades);
+        const texto = await buscarNoApp({ ...p, nicho, cidade });
+        csv = new Blob([texto], { type: "text/csv" });
+        await fetch("/api/prospeccao/salvar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nicho, cidade, csv: texto }),
+        }).catch(() => {});
+      } else {
+        const res = await fetch("/api/prospeccao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(p),
+        });
+        if (!res.ok) {
+          const j = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(j?.error ?? `Erro ${res.status}`);
+        }
+        csv = await res.blob();
+        // O servidor devolve nicho e cidade já corrigidos (acento, digitação).
+        nicho = decodeURIComponent(res.headers.get("X-Nicho") ?? p.nicho);
+        cidade = decodeURIComponent(res.headers.get("X-Cidade") ?? p.cidade);
       }
-      const csv = await res.blob();
-      router.refresh(); // recarrega o histórico, que o servidor acabou de gravar
-      // O servidor devolve nicho e cidade já corrigidos (acento, digitação).
-      const nicho = decodeURIComponent(res.headers.get("X-Nicho") ?? String(f.get("nicho")));
-      const cidade = decodeURIComponent(res.headers.get("X-Cidade") ?? String(f.get("cidade")));
+      router.refresh(); // recarrega o histórico, que acabou de ser gravado
       setBuscou(`${nicho} em ${cidade}`);
-      setResultado({
-        csv,
-        nome: `${slug(nicho)}-${slug(cidade)}.csv`,
-        leads: toLeads(await csv.text()),
-      });
+      setResultado({ csv, nome: `${slug(nicho)}-${slug(cidade)}.csv`, leads: toLeads(await csv.text()) });
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Falha na busca");
     } finally {

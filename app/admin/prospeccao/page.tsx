@@ -22,7 +22,7 @@ export default async function ProspeccaoPage() {
       <main className="mx-auto w-full max-w-5xl px-4 py-8">
         <p className="mb-6 w-fit max-w-full rounded-lg bg-white/90 px-3 py-2 text-sm text-neutral-700 backdrop-blur-sm">
           Busca empresas no Google Maps e mostra telefone, e-mail, site e Instagram, com planilha para baixar.
-          Só funciona no Mac que tem o scraper instalado.
+          Para buscar, abra pelo app CreativeHome no Mac (ou rodando o sistema localmente).
         </p>
         <ProspeccaoForm historico={historico} contatados={contatados} />
       </main>

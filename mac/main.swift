@@ -12,6 +12,19 @@ if CommandLine.arguments.contains("--ler-discos") {
     exit(0)
 }
 
+// Teste sem janela: `CreativeHome --prospectar "dentista" "Curitiba, PR"` roda o scraper e imprime o começo do CSV.
+if let i = CommandLine.arguments.firstIndex(of: "--prospectar"), CommandLine.arguments.count > i + 2 {
+    let corpo: [String: Any] = ["nicho": CommandLine.arguments[i + 1], "cidade": CommandLine.arguments[i + 2], "profundidade": 1]
+    guard let pedido = Prospeccao.Pedido(corpo) else { print("pedido inválido"); exit(2) }
+    Prospeccao.buscar(pedido) { r in
+        switch r {
+        case .success(let csv): print(csv.split(whereSeparator: \.isNewline).prefix(3).joined(separator: "\n")); exit(0)
+        case .failure(let e): print("ERRO: \(e.texto)"); exit(1)
+        }
+    }
+    dispatchMain()
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate,
     UNUserNotificationCenterDelegate, WKScriptMessageHandler
 {
@@ -189,16 +202,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         itensIntervalo.forEach { $0.state = $0.tag == item.tag ? .on : .off }
     }
 
-    /// Pedido da página: `{acao: "sincronizar", key}` lê as pastas só daquele disco, ou de todos os conectados
-    /// se `key` for "todos", e avisa a página ao terminar.
+    /// Pedidos da página pela ponte `guia`:
+    /// - `{acao: "sincronizar", key}` lê as pastas só daquele disco, ou de todos os conectados se `key` for "todos";
+    /// - `{acao: "prospectar", id, nicho, cidade, ...}` roda o scraper aqui e devolve o CSV pelo evento `guia-prospeccao`.
     func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.frameInfo.request.url?.host == host,
-            let corpo = message.body as? [String: Any], corpo["acao"] as? String == "sincronizar",
-            let key = corpo["key"] as? String
+        guard message.frameInfo.request.url?.host == host, let corpo = message.body as? [String: Any],
+            let acao = corpo["acao"] as? String
         else { return }
+        if acao == "prospectar" { return prospectar(corpo) }
+        guard acao == "sincronizar", let key = corpo["key"] as? String else { return }
         leitor.ler(varrer: true, soKey: key == "todos" ? nil : key) { [weak self] ok in
             let js = "window.dispatchEvent(new CustomEvent('guia-sync', {detail: {key, ok}}))"
             self?.web.callAsyncJavaScript(js, arguments: ["key": key, "ok": ok], in: nil, in: .page) { _ in }
+        }
+    }
+
+    func prospectar(_ corpo: [String: Any]) {
+        let id = corpo["id"] as? String ?? ""
+        func responder(_ detalhe: [String: Any]) {
+            let js = "window.dispatchEvent(new CustomEvent('guia-prospeccao', {detail}))"
+            web.callAsyncJavaScript(js, arguments: ["detail": detalhe], in: nil, in: .page) { _ in }
+        }
+        guard let pedido = Prospeccao.Pedido(corpo) else {
+            return responder(["id": id, "ok": false, "erro": "Pedido de busca inválido."])
+        }
+        Prospeccao.buscar(pedido) { r in
+            switch r {
+            case .success(let csv): responder(["id": id, "ok": true, "csv": csv])
+            case .failure(let e): responder(["id": id, "ok": false, "erro": e.texto])
+            }
         }
     }
 
