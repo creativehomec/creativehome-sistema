@@ -32,16 +32,13 @@ export function FaqSection({
               }`}
               buttonClassName="py-5"
               summary={
-                <span className="flex items-baseline gap-3 text-left text-sm font-bold">
-                  <span className={`text-xs tabular-nums ${tone.textMuted}`}>
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
+                <span className="flex items-baseline gap-3 text-left text-sm font-medium">
                   {item.question}
                 </span>
               }
             >
               <p
-                className={`pb-5 pl-8 text-sm leading-relaxed ${tone.textMuted}`}
+                className={`pb-5 text-sm leading-relaxed ${tone.textMuted}`}
               >
                 {item.answer}
               </p>
@@ -56,15 +53,12 @@ export function FaqSection({
             key={`${item.question}-${index}`}
             className={`border-t pt-4 ${tone.divider}`}
           >
-            <dt className="flex items-baseline gap-3 text-sm font-bold">
-              <span className={`text-xs tabular-nums ${tone.textMuted}`}>
-                {String(index + 1).padStart(2, "0")}
-              </span>
+            <dt className="flex items-baseline gap-3 text-sm font-medium">
               {item.question}
             </dt>
             {item.answer ? (
               <dd
-                className={`mt-2 pl-8 text-sm leading-relaxed ${tone.textMuted}`}
+                className={`mt-2 text-sm leading-relaxed ${tone.textMuted}`}
               >
                 {item.answer}
               </dd>

@@ -40,7 +40,7 @@ export function FooterSection({
     >
       <div data-slide-content className="mx-auto w-full max-w-5xl">
         <div
-          className={`flex flex-wrap items-center justify-between gap-2 border-b pb-6 text-xs font-medium uppercase tracking-[0.2em] ${tone.divider} ${tone.textMuted}`}
+          className={`flex flex-wrap items-center justify-between gap-2 border-b pb-6 text-xs font-medium ${tone.divider} ${tone.textMuted}`}
         >
           <span>Fim da proposta</span>
           {clientName ? <span>{clientName}</span> : null}
@@ -49,8 +49,7 @@ export function FooterSection({
         {data.phrase ? (
           <Reveal>
             <p
-              style={{ fontFamily: "Bootzy, sans-serif" }}
-              className="mt-12 max-w-3xl text-3xl leading-[1.1] tracking-wide sm:text-5xl"
+                            className="mt-12 max-w-3xl text-3xl leading-[1.1] tracking-tight sm:text-5xl"
             >
               {data.phrase}
             </p>
@@ -66,7 +65,7 @@ export function FooterSection({
                   href={link.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm font-bold underline underline-offset-4"
+                  className="text-sm font-medium underline underline-offset-4"
                 >
                   {link.label}
                 </a>

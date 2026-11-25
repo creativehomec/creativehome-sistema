@@ -159,24 +159,6 @@ export function SectionFields({
               placeholder="Direção criativa"
             />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Número de destaque">
-              <input
-                value={data.statNumber}
-                onChange={(e) => set({ statNumber: e.target.value })}
-                className={FIELD_CLASS}
-                placeholder="150+"
-              />
-            </Field>
-            <Field label="Legenda do número">
-              <input
-                value={data.statCaption}
-                onChange={(e) => set({ statCaption: e.target.value })}
-                className={FIELD_CLASS}
-                placeholder="projetos no ar"
-              />
-            </Field>
-          </div>
         </div>
       );
     }

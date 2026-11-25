@@ -80,7 +80,7 @@ export function PackagesFields({
               value={pacote.subtitle}
               onChange={(e) => trocar({ ...pacote, subtitle: e.target.value })}
               className={FIELD_CLASS}
-              placeholder="Subtítulo (ex.: campeão de vendas)"
+              placeholder="Subtítulo (ex.: o mais indicado)"
             />
             <input
               value={pacote.description}

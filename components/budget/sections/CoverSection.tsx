@@ -1,3 +1,4 @@
+import { ArrowDown } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ScrollHint } from "@/components/ScrollHint";
 import type { BlockTone, SectionData } from "@/lib/budgetSections";
@@ -108,19 +109,14 @@ export function CoverSection({
       <div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center">
         {data.eyebrow ? (
           <p
-            className={`mb-6 inline-flex w-fit border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.2em] ${
-              tone.isDark
-                ? "border-[var(--brand-cream)]/30"
-                : "border-[var(--brand-ink)]/25"
-            }`}
+            className={`mb-6 text-sm font-medium ${tone.textMuted}`}
           >
             {data.eyebrow}
           </p>
         ) : null}
 
         <h1
-          style={{ fontFamily: "Bootzy, sans-serif" }}
-          className="mb-6 text-5xl leading-[0.95] tracking-wide sm:text-8xl"
+                    className="mb-6 text-5xl leading-[0.95] tracking-tight sm:text-8xl"
         >
           {data.title}
         </h1>
@@ -135,9 +131,10 @@ export function CoverSection({
           <a
             href="#pacotes"
             // No PDF a seta "↓" não leva a lugar nenhum: o slide seguinte já é a proposta.
-            className="inline-block w-fit pdf:hidden bg-[var(--brand-ink)] px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-[var(--brand-cream)]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg pdf:hidden bg-[var(--brand-ink)] px-6 py-3.5 text-sm font-medium text-[var(--brand-cream)] transition-colors hover:bg-[var(--brand-ink)]/85"
           >
-            {data.cta} ↓
+            {data.cta}
+            <ArrowDown size={16} strokeWidth={1.5} aria-hidden />
           </a>
         ) : null}
       </div>

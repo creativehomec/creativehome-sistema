@@ -32,9 +32,6 @@ export function ListSection({
             key={`${item}-${index}`}
             className={`flex items-baseline gap-4 border-t py-4 ${tone.divider}`}
           >
-            <span className={`text-xs tabular-nums ${tone.textMuted}`}>
-              {String(index + 1).padStart(2, "0")}
-            </span>
             <span className="text-base font-medium leading-snug">{item}</span>
           </RevealItem>
         ))}

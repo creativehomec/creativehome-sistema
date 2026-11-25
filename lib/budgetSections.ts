@@ -546,8 +546,8 @@ export function secoesPadrao(): BudgetSection[] {
           "Gestão de conteúdo",
           "Estratégia de recorrência",
         ],
-        statNumber: "150+",
-        statCaption: "projetos colocados em movimento",
+        statNumber: "",
+        statCaption: "",
       },
     },
     {
@@ -644,7 +644,7 @@ export function secoesPadrao(): BudgetSection[] {
           {
             name: "START",
             price: 0,
-            subtitle: "mínimo para entrar",
+            subtitle: "para começar",
             description: "4 vídeos · meia diária",
             features: [
               "Direção criativa",
@@ -657,7 +657,7 @@ export function secoesPadrao(): BudgetSection[] {
           {
             name: "IDEAL",
             price: 0,
-            subtitle: "campeão de vendas",
+            subtitle: "o mais indicado",
             description: "6 vídeos · diária completa",
             features: [
               "Tudo do START",
