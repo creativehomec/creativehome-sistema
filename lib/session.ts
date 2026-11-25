@@ -73,3 +73,12 @@ export async function requireFeature(key: FeatureKey): Promise<void> {
   const allowed = await getAllowedFeatures();
   if (!allowed.includes(key)) redirect("/admin");
 }
+
+/**
+ * Igual ao `requireFeature`, mas lança em vez de redirecionar — pras server
+ * actions que devolvem o motivo ao editor em vez de perder o rascunho.
+ */
+export async function requireTeam(key: FeatureKey): Promise<void> {
+  const allowed = await getAllowedFeatures();
+  if (!allowed.includes(key)) throw new Error("Sem acesso à área " + key);
+}

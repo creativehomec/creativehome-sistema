@@ -1,9 +1,6 @@
-import { CountUp } from "@/components/budget/motion/CountUp";
-import { FadeUp } from "@/components/budget/motion/FadeUp";
-import { StaggerIn } from "@/components/budget/motion/StaggerIn";
+import { Reveal, RevealStagger, RevealItem } from "@/components/Reveal";
 import { SectionBlock, SectionHeading } from "@/components/budget/SectionShell";
 import type { BlockTone, SectionData } from "@/lib/budgetSections";
-import { brandDisplayFontFamily } from "@/lib/brand";
 
 /**
  * A leitura que o estúdio faz da marca: título grande e texto de um lado, e do
@@ -31,42 +28,43 @@ export function AboutSection({
             tone={tone}
           />
           {data.subtitle ? (
-            <FadeUp>
+            <Reveal>
               <h3 className="mt-8 text-xl font-bold sm:text-2xl">{data.subtitle}</h3>
-            </FadeUp>
+            </Reveal>
           ) : null}
           {data.text ? (
-            <FadeUp>
+            <Reveal>
               <p
                 className={`mt-6 max-w-xl whitespace-pre-wrap text-base leading-relaxed ${tone.textMuted}`}
               >
                 {data.text}
               </p>
-            </FadeUp>
+            </Reveal>
           ) : null}
         </div>
 
         {hasAside ? (
           <div>
             {data.statNumber ? (
-              <FadeUp>
-                <CountUp
-                  value={data.statNumber}
-                  style={{ fontFamily: brandDisplayFontFamily }}
+              <Reveal>
+                <p
+                  style={{ fontFamily: "Bootzy, sans-serif" }}
                   className="text-5xl leading-none tracking-wide sm:text-6xl"
-                />
+                >
+                  {data.statNumber}
+                </p>
                 {data.statCaption ? (
                   <p className={`mt-3 max-w-[16rem] text-sm ${tone.textMuted}`}>
                     {data.statCaption}
                   </p>
                 ) : null}
-              </FadeUp>
+              </Reveal>
             ) : null}
 
             {data.items.length > 0 ? (
-              <StaggerIn className={data.statNumber ? "mt-10" : ""}>
+              <RevealStagger className={data.statNumber ? "mt-10" : ""}>
                 {data.items.map((item, index) => (
-                  <div
+                  <RevealItem
                     key={`${item}-${index}`}
                     className={`flex items-baseline gap-3 border-t py-3.5 ${tone.divider}`}
                   >
@@ -74,9 +72,9 @@ export function AboutSection({
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <span className="text-sm font-medium">{item}</span>
-                  </div>
+                  </RevealItem>
                 ))}
-              </StaggerIn>
+              </RevealStagger>
             ) : null}
           </div>
         ) : null}

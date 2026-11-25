@@ -40,11 +40,27 @@ export default async function BudgetEditPage({ params }: { params: Params }) {
           <>
             <BudgetPublishBox budget={budget} />
             <BudgetGeneralInfoForm budget={budget} />
-            <BudgetRecurringCalculator
-              budget={budget}
-              hasPackages={budget.packages.length > 0}
-            />
-            <BudgetFreelaCalculator budgetId={budget.id} />
+            {/* Recolhidas: são de uso raro e ocupavam a aba inteira. O <details>
+                mantém o conteúdo montado, então o que se digitou não se perde. */}
+            <details className="group rounded-lg border border-neutral-200 bg-white [&_h2]:hidden [&>div>section]:border-0 [&>div>section]:p-0">
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-neutral-900 marker:text-neutral-500 max-lg:min-h-11">
+                Calculadora recorrente (por níveis)
+              </summary>
+              <div className="px-4 pb-4">
+                <BudgetRecurringCalculator
+                  budget={budget}
+                  hasPackages={budget.packages.length > 0}
+                />
+              </div>
+            </details>
+            <details className="group rounded-lg border border-neutral-200 bg-white [&_h2]:hidden [&>div>section]:border-0 [&>div>section]:p-0">
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-neutral-900 marker:text-neutral-500 max-lg:min-h-11">
+                Calculadora de freela
+              </summary>
+              <div className="px-4 pb-4">
+                <BudgetFreelaCalculator budgetId={budget.id} />
+              </div>
+            </details>
           </>
         }
       />

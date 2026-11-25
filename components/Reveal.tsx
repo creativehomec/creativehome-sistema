@@ -1,9 +1,13 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "motion/react";
-import type { ReactNode } from "react";
+import { MotionConfig, motion, type Variants } from "motion/react";
+import { useState, type ReactNode } from "react";
 
 const DISTANCE = 28;
+
+// Quem pediu menos movimento fica só com o fade: o MotionConfig corta o
+// deslocamento no navegador. Ler useReducedMotion aqui mudava o `initial`
+// entre servidor e navegador e a hidratação reclamava.
 
 export function Reveal({
   children,
@@ -16,23 +20,19 @@ export function Reveal({
   delay?: number;
   y?: number;
 }) {
-  const prefersReducedMotion = useReducedMotion();
-
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: false, amount: 0.3, margin: "-10% 0px -10% 0px" }}
-      transition={{
-        type: "spring",
-        bounce: 0,
-        duration: prefersReducedMotion ? 0.2 : 0.6,
-        delay: prefersReducedMotion ? 0 : delay,
-      }}
-    >
-      {children}
-    </motion.div>
+    <MotionConfig reducedMotion="user">
+      <motion.div
+        data-reveal
+        className={className}
+        initial={{ opacity: 0, y }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3, margin: "-10% 0px -10% 0px" }}
+        transition={{ type: "spring", bounce: 0, duration: 0.6, delay }}
+      >
+        {children}
+      </motion.div>
+    </MotionConfig>
   );
 }
 
@@ -50,27 +50,29 @@ export function RevealStagger({
   className?: string;
   staggerDelay?: number;
 }) {
-  const prefersReducedMotion = useReducedMotion();
-
+  const [visto, setVisto] = useState(false);
   const container: Variants = {
     hidden: {},
-    show: {
-      transition: {
-        staggerChildren: prefersReducedMotion ? 0 : staggerDelay,
-      },
-    },
+    show: { transition: { staggerChildren: staggerDelay } },
   };
 
+  // `animate` controlado em vez de `whileInView`: filho que entra depois da
+  // revelação (um pacote novo no editor) não herda o whileInView e ficava
+  // preso em opacidade 0. Com `animate`, ele já nasce indo para "show".
   return (
-    <motion.div
-      className={className}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: false, amount: 0.2, margin: "-10% 0px -10% 0px" }}
-      variants={container}
-    >
-      {children}
-    </motion.div>
+    <MotionConfig reducedMotion="user">
+      <motion.div
+        data-reveal
+        className={className}
+        initial="hidden"
+        animate={visto ? "show" : "hidden"}
+        onViewportEnter={() => setVisto(true)}
+        viewport={{ once: true, amount: 0.2, margin: "-10% 0px -10% 0px" }}
+        variants={container}
+      >
+        {children}
+      </motion.div>
+    </MotionConfig>
   );
 }
 
@@ -83,24 +85,16 @@ export function RevealItem({
   className?: string;
   y?: number;
 }) {
-  const prefersReducedMotion = useReducedMotion();
-
   const item: Variants = {
-    hidden: { opacity: 0, y: prefersReducedMotion ? 0 : y },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        bounce: 0,
-        duration: prefersReducedMotion ? 0.2 : 0.5,
-      },
-    },
+    hidden: { opacity: 0, y },
+    show: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0, duration: 0.5 } },
   };
 
   return (
-    <motion.div className={className} variants={item}>
-      {children}
-    </motion.div>
+    <MotionConfig reducedMotion="user">
+      <motion.div data-reveal className={className} variants={item}>
+        {children}
+      </motion.div>
+    </MotionConfig>
   );
 }

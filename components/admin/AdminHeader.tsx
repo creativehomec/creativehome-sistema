@@ -55,7 +55,7 @@ export async function AdminHeader({
           <Link
             href="/admin"
             aria-label="Ir para o Painel"
-            className={`grid size-10 place-items-center rounded-md text-neutral-600 transition-transform hover:bg-neutral-100 hover:text-neutral-900 active:scale-95 ${FOCUS_RING}`}
+            className={`grid size-10 place-items-center rounded-md bg-white/90 text-neutral-800 transition-transform hover:bg-white hover:text-neutral-950 active:scale-95 ${FOCUS_RING}`}
           >
             <Home aria-hidden="true" className="size-5" />
           </Link>
@@ -65,7 +65,7 @@ export async function AdminHeader({
           <form action={logout}>
             <button
               type="submit"
-              className={`flex h-10 items-center rounded-md border border-neutral-300 px-3 text-sm text-neutral-600 transition-transform hover:bg-neutral-50 hover:text-neutral-900 active:scale-95 ${FOCUS_RING}`}
+              className={`flex h-10 items-center rounded-md border border-neutral-300 bg-white/90 px-3 text-sm text-neutral-800 transition-transform hover:bg-white hover:text-neutral-950 active:scale-95 ${FOCUS_RING}`}
             >
               Sair
             </button>

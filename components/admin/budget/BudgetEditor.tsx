@@ -1,27 +1,47 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ExternalLink, PanelRightClose, PanelRightOpen } from "lucide-react";
-import { saveBudgetSectionsAction } from "@/app/admin/orcamentos/[id]/actions";
+import {
+  ExternalLink,
+  PanelRightClose,
+  PanelRightOpen,
+  Redo2,
+  Undo2,
+} from "lucide-react";
+import { saveBudgetSectionsAction, setBudgetStatusAction } from "@/app/admin/orcamentos/[id]/actions";
 import {
   BudgetPreviewPane,
   ZoomControls,
 } from "@/components/admin/budget/BudgetPreviewPane";
+import { BudgetAiFill } from "@/components/admin/budget/BudgetAiFill";
 import { BudgetSectionPanel } from "@/components/admin/budget/BudgetSectionPanel";
-import type { BudgetSection } from "@/lib/budgetSections";
+import { useAutosave, type EstadoSave } from "@/components/admin/budget/useAutosave";
+import { useHistoricoCampos } from "@/components/admin/budget/useHistoricoCampos";
+import { BudgetSections } from "@/components/budget/BudgetSections";
+import { SECTION_LABELS, isEmpty, parseSections, type BudgetSection } from "@/lib/budgetSections";
 import type { BudgetWithSections } from "@/lib/budgets";
 
-const DEBOUNCE_MS = 900;
+/** As seções sem o texto: muda quando a estrutura muda, não quando se digita. */
+function forma(sections: BudgetSection[]) {
+  return JSON.stringify(sections, (_, v) =>
+    typeof v === "string" ? "" : typeof v === "number" ? 0 : v
+  );
+}
 
-type SaveState = "idle" | "pending" | "saving" | "saved" | "error";
-
-const SAVE_LABEL: Record<SaveState, string> = {
-  idle: "",
-  pending: "Editando…",
-  saving: "Salvando…",
-  saved: "Salvo",
-  error: "Não salvou",
-};
+function rotuloSave(estado: EstadoSave) {
+  switch (estado.tipo) {
+    case "pendente":
+      return "Editando…";
+    case "salvando":
+      return "Salvando…";
+    case "salvo":
+      return "Salvo";
+    case "erro":
+      return `Não salvou: ${estado.motivo}`;
+    default:
+      return "";
+  }
+}
 
 /**
  * O editor da proposta: preview à esquerda, painel de seções à direita.
@@ -51,78 +71,166 @@ export function BudgetEditor({
   const [openKind, setOpenKind] = useState<string | null>(null);
   const [tab, setTab] = useState<"secoes" | "config">("secoes");
   const [painelAberto, setPainelAberto] = useState(true);
+  const [previaCelular, setPreviaCelular] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
   // O zoom do preview mora aqui porque o controle dele fica na barra do painel,
   // e não sobre a proposta.
   const [zoom, setZoom] = useState<number | null>(null);
-  const [saveState, setSaveState] = useState<SaveState>("idle");
+  // O JSON da última versão enviada, como o banco vai devolvê-la.
+  const eco = useRef<string | null>(null);
+  const {
+    estado,
+    agendar,
+    ocupado,
+    rascunho,
+    descartarRascunho,
+    fecharRascunho,
+  } =
+    useAutosave<BudgetSection[]>({
+      chave: `orcamento-rascunho-${budget.id}`,
+      servidor: budget.sections,
+      normalizar: parseSections,
+      salvar: (valor) => {
+        // O banco guarda a versão normalizada (sem item vazio, sem espaço no
+        // fim). Anotar qual é deixa o efeito abaixo reconhecer o próprio eco.
+        eco.current = JSON.stringify(parseSections(valor));
+        return saveBudgetSectionsAction(budget.id, valor);
+      },
+    });
 
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // O save lê daqui, e não da closure, para nunca gravar uma versão anterior
-  // à última tecla digitada.
-  const pending = useRef<BudgetSection[] | null>(null);
+  // Histórico do Cmd+Z. Fica em ref (o atalho lê na hora, sem closure velha);
+  // `pilhas` é só o tamanho de cada lado, para os botões se acenderem.
+  const atual = useRef(sections);
+  const historico = useRef({
+    passado: [] as BudgetSection[][],
+    futuro: [] as BudgetSection[][],
+    ultimo: 0,
+    forma: forma(sections),
+  });
+  const [pilhas, setPilhas] = useState({ passado: 0, futuro: 0 });
+  const contar = useCallback(() => {
+    const h = historico.current;
+    setPilhas({ passado: h.passado.length, futuro: h.futuro.length });
+  }, []);
 
-  const flush = useCallback(async () => {
-    const payload = pending.current;
-    if (!payload) return;
-    pending.current = null;
-
-    setSaveState("saving");
-    try {
-      await saveBudgetSectionsAction(budget.id, payload);
-      setSaveState("saved");
-    } catch (error) {
-      console.error("[BudgetEditor] falhou ao salvar as seções:", error);
-      setSaveState("error");
-    }
-  }, [budget.id]);
+  const aplicar = useCallback(
+    (next: BudgetSection[], immediate: boolean) => {
+      atual.current = next;
+      historico.current.forma = forma(next);
+      setSections(next);
+      agendar(next, immediate);
+    },
+    [agendar]
+  );
 
   const schedule = useCallback(
     (next: BudgetSection[], immediate = false) => {
-      setSections(next);
-      pending.current = next;
-      setSaveState("pending");
-
-      if (timer.current) clearTimeout(timer.current);
+      const h = historico.current;
+      const agora = Date.now();
+      // Uma rajada de digitação vira um passo só. Mudança de estrutura (ligar
+      // seção, adicionar ou remover item, destaque) é sempre um passo próprio,
+      // mesmo colada na digitação.
+      if (immediate || agora - h.ultimo > 800 || forma(next) !== h.forma) {
+        h.passado.push(atual.current);
+        if (h.passado.length > 100) h.passado.shift();
+      }
+      h.ultimo = immediate ? 0 : agora;
+      h.futuro = [];
+      contar();
       // Ligar uma seção, adicionar ou remover um item não é digitação: são
       // cliques isolados, e esperar quase um segundo por eles só faz o "Salvo"
       // chegar atrasado.
-      timer.current = setTimeout(flush, immediate ? 0 : DEBOUNCE_MS);
+      aplicar(next, immediate);
     },
-    [flush]
+    [aplicar, contar]
   );
+
+  const desfazer = useCallback(() => {
+    const h = historico.current;
+    const anterior = h.passado.pop();
+    if (!anterior) return;
+    h.futuro.push(atual.current);
+    h.ultimo = 0;
+    contar();
+    aplicar(anterior, true);
+  }, [aplicar, contar]);
+
+  const refazer = useCallback(() => {
+    const h = historico.current;
+    const proximo = h.futuro.pop();
+    if (!proximo) return;
+    h.passado.push(atual.current);
+    h.ultimo = 0;
+    contar();
+    aplicar(proximo, true);
+  }, [aplicar, contar]);
+
+  // A aba Configuração tem o próprio histórico, separado do das seções:
+  // desfazer lá nunca mexe na proposta, e vice-versa.
+  const abaConfig = useRef<HTMLDivElement>(null);
+  const {
+    desfazer: desfazerConfig,
+    refazer: refazerConfig,
+    pilhas: pilhasConfig,
+  } = useHistoricoCampos(abaConfig);
+  const naConfig = tab === "config";
+  const histDesfazer = naConfig ? desfazerConfig : desfazer;
+  const histRefazer = naConfig ? refazerConfig : refazer;
+  const histPilhas = naConfig ? pilhasConfig : pilhas;
+
+  // Cmd+Z / Ctrl+Z desfaz, Cmd+Shift+Z / Ctrl+Y refaz, no histórico da aba
+  // aberta — também com o cursor dentro de um campo: o desfazer nativo não
+  // funciona em campo controlado pelo React.
+  const raiz = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const alvo = e.target as Node | null;
+      if (alvo !== document.body && !raiz.current?.contains(alvo)) return;
+      // Numa janela por cima (Preencher com IA) o atalho é do texto dela, não
+      // da proposta que está atrás.
+      if (alvo instanceof Element && alvo.closest("dialog")) return;
+      const tecla = e.key.toLowerCase();
+      if (tecla === "z") {
+        e.preventDefault();
+        if (e.shiftKey) histRefazer();
+        else histDesfazer();
+      } else if (tecla === "y" && e.ctrlKey) {
+        e.preventDefault();
+        histRefazer();
+      }
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [histDesfazer, histRefazer]);
 
   // A aba Configuração salva pelo servidor: a calculadora escreve os pacotes
   // direto na seção de valores. Sem adotar o que volta de lá, o preview ficaria
   // desatualizado e — pior — o próximo autosave gravaria o estado antigo por
   // cima, apagando os pacotes recém-gerados.
   //
-  // Só adota quando não há save pendente: o rascunho de quem está digitando
-  // vale mais que a versão do servidor, que é justamente a de antes.
+  // Só adota quando não há save pendente nem em voo: o rascunho de quem está
+  // digitando vale mais que a versão do servidor, que é justamente a de antes.
+  //
+  // E não adota o próprio eco: o que volta depois de um save é o que foi
+  // enviado, já normalizado. Adotar isso apagava o item recém-criado (vazio)
+  // e o espaço no fim do que se estava digitando.
   useEffect(() => {
-    if (pending.current) return;
+    if (ocupado()) return;
     const doServidor = JSON.stringify(budget.sections);
-    setSections((atual) =>
-      doServidor === JSON.stringify(atual) ? atual : budget.sections
-    );
-  }, [budget.sections]);
-
-  // Fechar a aba com um save agendado perderia a última edição.
-  useEffect(() => {
-    function avisar(event: BeforeUnloadEvent) {
-      if (pending.current) event.preventDefault();
-    }
-    window.addEventListener("beforeunload", avisar);
-    return () => window.removeEventListener("beforeunload", avisar);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, []);
+    if (doServidor === eco.current) return;
+    if (doServidor === JSON.stringify(atual.current)) return;
+    atual.current = budget.sections;
+    setSections(budget.sections);
+  }, [budget.sections, ocupado]);
 
   const toggleEnabled = useCallback(
     (kind: string) => {
+      const alvo = sections.find((section) => section.kind === kind);
+      if (alvo) {
+        const nome = SECTION_LABELS[alvo.kind as keyof typeof SECTION_LABELS] ?? kind;
+        setAviso(alvo.enabled ? `${nome} saiu da proposta` : `${nome} voltou à proposta`);
+      }
       schedule(
         sections.map((section) =>
           section.kind === kind
@@ -134,6 +242,21 @@ export function BudgetEditor({
     },
     [schedule, sections]
   );
+
+  // O que ainda falta para a proposta fazer sentido para o cliente: o link sai
+  // com o nome do cliente, a capa abre a página e os pacotes são o que se vende.
+  const faltando: string[] = [];
+  if (!budget.client_name.trim()) faltando.push("nome do cliente");
+  const capa = sections.find((s) => s.kind === "cover");
+  if (capa?.kind === "cover" && !capa.data.title.trim()) faltando.push("título da capa");
+  const pacotes = sections.find((s) => s.kind === "pricing");
+  if (!pacotes || !pacotes.enabled || isEmpty(pacotes)) faltando.push("pacotes");
+
+  useEffect(() => {
+    if (!aviso) return;
+    const id = setTimeout(() => setAviso(null), 2200);
+    return () => clearTimeout(id);
+  }, [aviso]);
 
   const changeSection = useCallback(
     (updated: BudgetSection) => {
@@ -150,6 +273,7 @@ export function BudgetEditor({
     // data-live-pause segura o LiveRefresh do cabeçalho: uma revalidação de
     // rota no meio da edição traria as seções do banco por cima do rascunho.
     <div
+      ref={raiz}
       data-live-pause
       className={`grid gap-4 lg:h-[calc(100svh-9rem)] ${
         painelAberto ? "lg:grid-cols-[1fr_380px]" : "lg:grid-cols-1"
@@ -157,11 +281,16 @@ export function BudgetEditor({
     >
       {/* min-w-0: sem isto a coluna se recusa a encolher abaixo da largura do
           conteúdo, que é fixa em 1440, e o grid estoura a tela. */}
-      <div className="relative min-h-0 min-w-0">
+      {/* Abaixo de lg a prévia some: a proposta de 1440px encolhida para um
+          celular não se lê, e ocupava ~100 mil px de rolagem antes do painel.
+          Ali, "Abrir proposta" mostra a página de verdade. */}
+      <div className="relative hidden min-h-0 min-w-0 lg:block">
         <BudgetPreviewPane
           sections={sections}
           clientName={budget.client_name}
           zoom={zoom}
+          focusKind={tab === "secoes" ? openKind : null}
+          aviso={aviso}
         />
         {painelAberto ? null : (
           <button
@@ -176,32 +305,155 @@ export function BudgetEditor({
       </div>
 
       <div
-        className={`flex min-h-0 flex-col gap-3 lg:overflow-y-auto ${
-          painelAberto ? "" : "hidden"
+        className={`flex min-h-0 flex-col gap-3 lg:overflow-y-auto max-lg:[&_input:not([type=checkbox],[type=range],[type=file],[type=radio])]:min-h-11 max-lg:[&_input:not([type=checkbox],[type=range],[type=file],[type=radio])]:text-base max-lg:[&_select]:text-base max-lg:[&_textarea]:text-base ${
+          painelAberto ? "" : "lg:hidden"
         }`}
       >
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2.5">
+        {rascunho ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"
+          >
+            <p>
+              Sobraram edições não gravadas de{" "}
+              {new Date(rascunho.at).toLocaleString("pt-BR")}.
+            </p>
+            <div className="mt-2 flex gap-3 font-medium">
+              <button
+                type="button"
+                onClick={() => {
+                  schedule(rascunho.valor, true);
+                  fecharRascunho();
+                }}
+                className="underline"
+              >
+                Recuperar
+              </button>
+              <button
+                type="button"
+                onClick={descartarRascunho}
+                className="underline"
+              >
+                Descartar
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Barra e abas ficam fixas no topo do painel: o estado de salvamento e o
+            desfazer não podem sumir quando a lista de seções rola. */}
+        <div className="sticky top-0 z-10 -mx-px flex flex-col gap-3 pb-1">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-2.5">
+          <div className="min-w-0">
+            <a
+              href="/admin/orcamentos"
+              className="text-[11px] uppercase tracking-[0.12em] text-neutral-600 hover:text-neutral-900"
+            >
+              ‹ Orçamentos
+            </a>
+            <p className="truncate text-sm font-medium text-neutral-900" title={budget.title}>
+              {budget.title}
+            </p>
+          </div>
+          <form
+            action={setBudgetStatusAction}
+            onSubmit={(e) => {
+              if (budget.status !== "published" && faltando.length > 0) {
+                const ok = window.confirm(
+                  `Ainda falta: ${faltando.join(", ")}.\n\nPublicar mesmo assim?`
+                );
+                if (!ok) e.preventDefault();
+              }
+            }}
+            className="flex shrink-0 items-center gap-2"
+          >
+            <input type="hidden" name="id" value={budget.id} />
+            <input
+              type="hidden"
+              name="status"
+              value={budget.status === "published" ? "draft" : "published"}
+            />
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                budget.status === "published"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-amber-50 text-amber-800"
+              }`}
+            >
+              {budget.status === "published" ? "Publicado" : "Rascunho"}
+            </span>
+            <button
+              type="submit"
+              className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 max-lg:min-h-11"
+            >
+              {budget.status === "published" ? "Despublicar" : "Publicar"}
+            </button>
+          </form>
+        </div>
+        {faltando.length > 0 ? (
+          <p
+            role="note"
+            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+          >
+            {budget.status === "published" ? "Publicada, mas falta" : "Antes de publicar, falta"}:{" "}
+            {faltando.join(", ")}.
+          </p>
+        ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg border border-neutral-200 bg-white px-4 py-2.5">
           <span
             className={`text-xs ${
-              saveState === "error" ? "text-red-600" : "text-neutral-500"
+              estado.tipo === "erro" ? "text-red-600" : "text-neutral-600"
             }`}
             // O estado de salvamento muda sozinho: quem usa leitor de tela
             // precisa ouvir, mas sem interromper o que está sendo lido.
             role="status"
             aria-live="polite"
           >
-            {SAVE_LABEL[saveState]}
+            {rotuloSave(estado)}
           </span>
           <div className="flex items-center gap-2">
-            <ZoomControls zoom={zoom} onChange={setZoom} />
+            <button
+              type="button"
+              onClick={histDesfazer}
+              disabled={histPilhas.passado === 0}
+              title="Desfazer (⌘Z)"
+              className="rounded p-2 text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none disabled:opacity-30 lg:p-1"
+            >
+              <Undo2 className="h-4 w-4" />
+              <span className="sr-only">Desfazer</span>
+            </button>
+            <button
+              type="button"
+              onClick={histRefazer}
+              disabled={histPilhas.futuro === 0}
+              title="Refazer (⇧⌘Z)"
+              className="rounded p-2 text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none disabled:opacity-30 lg:p-1"
+            >
+              <Redo2 className="h-4 w-4" />
+              <span className="sr-only">Refazer</span>
+            </button>
+
+            {/* Zoom e esconder o painel só fazem sentido com a prévia ao lado. */}
+            <span className="hidden h-4 w-px bg-neutral-200 lg:block" />
+
+            <div className="hidden lg:block">
+              <ZoomControls zoom={zoom} onChange={setZoom} />
+            </div>
 
             <span className="h-4 w-px bg-neutral-200" />
 
+            <button
+              type="button"
+              onClick={() => setPreviaCelular(true)}
+              className="flex items-center gap-1.5 py-2 text-xs font-medium text-neutral-700 hover:text-neutral-900 lg:hidden"
+            >
+              Ver prévia
+            </button>
             <a
               href={`/orcamento/${budget.slug}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 text-xs font-medium text-neutral-700 hover:text-neutral-900"
+              className="flex items-center gap-1.5 whitespace-nowrap py-2 text-xs font-medium text-neutral-700 hover:text-neutral-900 lg:py-0"
             >
               Abrir proposta
               <ExternalLink className="h-3.5 w-3.5" />
@@ -210,7 +462,7 @@ export function BudgetEditor({
               type="button"
               onClick={() => setPainelAberto(false)}
               title="Esconder o painel e ver a proposta larga"
-              className="rounded p-1 text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none"
+              className="hidden rounded p-1 lg:block text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none"
             >
               <PanelRightClose className="h-4 w-4" />
               <span className="sr-only">Esconder o painel</span>
@@ -235,20 +487,26 @@ export function BudgetEditor({
               role="tab"
               aria-selected={tab === value}
               onClick={() => setTab(value)}
-              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-[0.12em] transition-colors focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none ${
+              className={`flex-1 rounded-md px-3 py-3 text-xs lg:py-1.5 font-medium uppercase tracking-[0.12em] transition-colors focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none ${
                 tab === value
                   ? "bg-neutral-900 text-white"
-                  : "text-neutral-500 hover:text-neutral-900"
+                  : "text-neutral-600 hover:text-neutral-900"
               }`}
             >
               {label}
             </button>
           ))}
         </div>
+        </div>
 
-        {tab === "config" ? (
-          <div className="space-y-4">{config}</div>
-        ) : (
+        {/* Fica montada mesmo escondida: o histórico dela e o que se digitou
+            nas calculadoras sobrevivem à troca de aba. */}
+        <div ref={abaConfig} className={`space-y-4 ${tab === "config" ? "" : "hidden"}`}>
+          {config}
+        </div>
+        {tab === "config" ? null : (
+        <>
+        <BudgetAiFill sections={sections} onApply={(next) => schedule(next, true)} />
         <BudgetSectionPanel
           sections={sections}
           openKind={openKind}
@@ -257,10 +515,36 @@ export function BudgetEditor({
           }
           onToggleEnabled={toggleEnabled}
           onChange={changeSection}
+          onChangeMany={(novas) =>
+            schedule(
+              sections.map((s) => novas.find((n) => n.kind === s.kind) ?? s),
+              true
+            )
+          }
           budgetId={budget.id}
         />
+        </>
         )}
       </div>
+
+      {/* Abaixo de lg a prévia lateral não cabe: aqui ela vira tela cheia, com a
+          proposta na largura real do aparelho. */}
+      {previaCelular ? (
+        <div
+          role="dialog"
+          aria-label="Prévia da proposta"
+          className="fixed inset-0 z-50 overflow-y-auto bg-white lg:hidden"
+        >
+          <button
+            type="button"
+            onClick={() => setPreviaCelular(false)}
+            className="fixed right-3 top-3 z-10 flex min-h-11 items-center gap-1.5 rounded-full bg-neutral-900 px-4 text-sm font-medium text-white shadow-lg"
+          >
+            Fechar prévia
+          </button>
+          <BudgetSections sections={sections} clientName={budget.client_name} />
+        </div>
+      ) : null}
     </div>
   );
 }

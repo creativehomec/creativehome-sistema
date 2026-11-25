@@ -13,10 +13,7 @@ export const NIVEL_CLIENTE_ADJ: Record<NivelCliente, number> = {
   grande: 0.08,
 };
 
-import { brand } from "@/lib/brand";
-
-/** Link de contato dos pacotes — configurado em lib/brand.ts. */
-export const PACKAGE_WHATSAPP_URL = brand.contactUrl;
+export const PACKAGE_WHATSAPP_URL = "https://wa.me/message/EUGPJKECKJANF1";
 
 export interface RecorrenteInput {
   meuNivel: MeuNivel;

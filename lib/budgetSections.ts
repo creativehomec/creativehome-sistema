@@ -22,7 +22,10 @@ export const SECTION_KINDS = [
   "package1Extra",
   "package2Perks",
   "strategy",
+  "whyExternal",
   "pricing",
+  "avulsos",
+  "regras",
   "faq",
   "footer",
 ] as const;
@@ -48,32 +51,35 @@ export interface PortfolioProject {
   orientation: Orientation;
 }
 
-/** Quatro empresas de exemplo: nascem num orçamento novo e preenchem a lista em desenvolvimento. */
-export const PLACEHOLDER_LOGOS: ClientLogo[] = [
-  "Aurora Motors",
-  "Vento Esportes",
-  "Sabor & Cia",
-  "Horizonte Viagens",
-].map((name, i) => ({
-  name,
-  url: `/placeholders/empresa-${i + 1}.svg`,
-  photo: `https://picsum.photos/seed/creative-empresa-${i + 1}/1600/900`,
-}));
-
 export interface ClientLogo {
   name: string;
   url: string;
-  /** Foto de fundo do nome na lista animada; sem ela usa o próprio logo. */
-  photo?: string;
+}
+
+/**
+ * Uma linha do pacote. `detail` é o subtítulo da linha (a quantidade, ex.:
+ * "3 vídeos"); `description` aparece só quando a pessoa abre o "+".
+ */
+export interface PackageItem {
+  title: string;
+  detail: string;
+  description: string;
 }
 
 export interface PricingPackage {
   name: string;
   price: number;
+  /** Texto depois do preço, ex.: "/ mês", "/ arte". */
+  unit: string;
   subtitle: string;
   description: string;
-  features: string[];
+  items: PackageItem[];
   featured: boolean;
+}
+
+export interface RuleBlock {
+  title: string;
+  lines: string[];
 }
 
 export interface FaqItem {
@@ -89,8 +95,6 @@ export interface SectionData {
     cta: string;
     /** Imagem ou vídeo de fundo: arquivo, YouTube ou Vimeo. */
     mediaUrl: string;
-    /** Reel completo (YouTube, Vimeo ou arquivo), aberto pelo botão "Play reel". */
-    reelUrl: string;
     /** Desfoque da mídia de fundo, em pixels. 0 = sem desfoque. */
     blur: number;
   };
@@ -114,6 +118,7 @@ export interface SectionData {
   package1Extra: ListSectionData;
   package2Perks: ListSectionData;
   strategy: ListSectionData;
+  whyExternal: { eyebrow: string; title: string; text: string };
   pricing: {
     eyebrow: string;
     title: string;
@@ -121,6 +126,17 @@ export interface SectionData {
     cta: string;
     packages: PricingPackage[];
   };
+  /** Mesma forma dos pacotes, para peças pontuais orçadas à parte. */
+  avulsos: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    cta: string;
+    packages: PricingPackage[];
+    /** Linhas de rodapé: regras comuns e outros avulsos. */
+    notes: string[];
+  };
+  regras: { eyebrow: string; title: string; blocks: RuleBlock[] };
   faq: { eyebrow: string; title: string; items: FaqItem[] };
   footer: {
     phrase: string;
@@ -152,7 +168,10 @@ export const SECTION_LABELS: Record<SectionKind, string> = {
   package1Extra: "Mas se você precisa (pacote 1)",
   package2Perks: "Diferenciais do pacote 2",
   strategy: "Estratégia",
+  whyExternal: "Por que vídeos externos",
   pricing: "Valores dos pacotes",
+  avulsos: "Avulsos",
+  regras: "Regras e condições",
   faq: "Perguntas frequentes",
   footer: "Rodapé",
 };
@@ -205,6 +224,42 @@ function textList(value: unknown): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Pacotes de preço (e avulsos). Pacote gravado antes das linhas estruturadas
+ * ainda tem `features`, lista de texto: cada texto vira uma linha só com título.
+ */
+function packagesFrom(raw: unknown, unitFallback: string): PricingPackage[] {
+  return arr(raw).map((item) => {
+    const p = obj(item);
+    const structured = arr(p.items)
+      .map((line) => {
+        const l = obj(line);
+        return {
+          title: str(l.title).trim(),
+          detail: str(l.detail).trim(),
+          description: str(l.description).trim(),
+        };
+      })
+      // Linha com qualquer campo preenchido fica: descartar pela falta do
+      // título apagava a quantidade e a descrição já escritas.
+      .filter((line) => line.title !== "" || line.detail !== "" || line.description !== "");
+    const legacy = textList(p.features).map((title) => ({
+      title,
+      detail: "",
+      description: "",
+    }));
+    return {
+      name: str(p.name),
+      price: Math.max(0, num(p.price)),
+      unit: str(p.unit, unitFallback),
+      subtitle: str(p.subtitle),
+      description: str(p.description),
+      items: structured.length > 0 ? structured : legacy,
+      featured: bool(p.featured),
+    };
+  });
+}
+
 function listData(raw: Record<string, unknown>): ListSectionData {
   return {
     eyebrow: str(raw.eyebrow),
@@ -234,7 +289,6 @@ function parseData<K extends SectionKind>(
         // videoUrl é o nome antigo, de quando a capa só aceitava vídeo: as
         // propostas gravadas antes ainda têm a chave, e continuam valendo.
         mediaUrl: str(d.mediaUrl, str(d.videoUrl)).trim(),
-        reelUrl: str(d.reelUrl).trim(),
         blur: clamp(num(d.blur), 0, MAX_BLUR),
       } as SectionData[K];
 
@@ -273,11 +327,7 @@ function parseData<K extends SectionKind>(
         logos: arr(d.logos)
           .map((item) => {
             const l = obj(item);
-            return {
-              name: str(l.name),
-              url: str(l.url).trim(),
-              photo: str(l.photo).trim(),
-            };
+            return { name: str(l.name), url: str(l.url).trim() };
           })
           // Um logo sem imagem não é um logo — some da lista em vez de virar
           // um buraco na faixa.
@@ -290,17 +340,36 @@ function parseData<K extends SectionKind>(
         title: str(d.title),
         subtitle: str(d.subtitle),
         cta: str(d.cta),
-        packages: arr(d.packages).map((item) => {
-          const p = obj(item);
-          return {
-            name: str(p.name),
-            price: num(p.price),
-            subtitle: str(p.subtitle),
-            description: str(p.description),
-            features: textList(p.features),
-            featured: bool(p.featured),
-          };
-        }),
+        packages: packagesFrom(d.packages, "/ mês"),
+      } as SectionData[K];
+
+    case "avulsos":
+      return {
+        eyebrow: str(d.eyebrow),
+        title: str(d.title),
+        subtitle: str(d.subtitle),
+        cta: str(d.cta),
+        packages: packagesFrom(d.packages, "/ peça"),
+        notes: textList(d.notes),
+      } as SectionData[K];
+
+    case "whyExternal":
+      return {
+        eyebrow: str(d.eyebrow),
+        title: str(d.title),
+        text: str(d.text),
+      } as SectionData[K];
+
+    case "regras":
+      return {
+        eyebrow: str(d.eyebrow),
+        title: str(d.title),
+        blocks: arr(d.blocks)
+          .map((item) => {
+            const b = obj(item);
+            return { title: str(b.title), lines: textList(b.lines) };
+          })
+          .filter((b) => b.title.trim() !== "" || b.lines.length > 0),
       } as SectionData[K];
 
     case "faq":
@@ -312,7 +381,7 @@ function parseData<K extends SectionKind>(
             const f = obj(item);
             return { question: str(f.question), answer: str(f.answer) };
           })
-          .filter((f) => f.question.trim() !== ""),
+          .filter((f) => f.question.trim() !== "" || f.answer.trim() !== ""),
       } as SectionData[K];
 
     case "footer":
@@ -385,7 +454,12 @@ export function isEmpty(section: BudgetSection): boolean {
     case "logos":
       return data.logos.length === 0;
     case "pricing":
+    case "avulsos":
       return data.packages.length === 0;
+    case "whyExternal":
+      return data.title.trim() === "" && data.text.trim() === "";
+    case "regras":
+      return data.blocks.length === 0;
     case "faq":
       return data.items.length === 0;
     case "footer":
@@ -454,7 +528,6 @@ export function secoesPadrao(): BudgetSection[] {
           "Uma direção audiovisual desenhada para transformar atenção em percepção de valor.",
         cta: "Conhecer a proposta",
         mediaUrl: "",
-        reelUrl: "",
         blur: 0,
       },
     },
@@ -493,8 +566,7 @@ export function secoesPadrao(): BudgetSection[] {
       data: {
         eyebrow: "QUEM JÁ CONFIA",
         title: "Marcas que já colocamos em movimento",
-        // Marcas de exemplo (nome, logo e foto): trocar pelas reais no editor.
-        logos: PLACEHOLDER_LOGOS,
+        logos: [],
       },
     },
     {
@@ -607,6 +679,91 @@ export function secoesPadrao(): BudgetSection[] {
               "Time dedicado",
             ],
             featured: false,
+          },
+        ],
+      },
+    },
+    {
+      kind: "whyExternal",
+      enabled: false,
+      data: {
+        eyebrow: "CONTEÚDO",
+        title: "Por que esse conteúdo",
+        text: "Explique em duas frases o que a marca mostra hoje e o que passa a mostrar.\n\nSepare o conteúdo de venda direta do que constrói percepção de valor.",
+      },
+    },
+    {
+      kind: "avulsos",
+      enabled: false,
+      data: {
+        eyebrow: "AVULSOS",
+        title: "Peças pontuais, orçadas à parte",
+        subtitle:
+          "Fora da mensalidade, não obrigatório. Cada peça é orçada antes de começar e aprovada por escrito no WhatsApp.",
+        cta: "Solicitar orçamento",
+        // Preço zero de propósito, como nos pacotes: aparece "A definir".
+        packages: [
+          {
+            name: "Vídeo extra",
+            price: 0,
+            unit: "/ peça",
+            subtitle: "Reels",
+            description: "",
+            items: [
+              { title: "Vídeo", detail: "1 vídeo", description: "Roteiro, captação, edição, legenda e trilha licenciada." },
+              { title: "Ajuste", detail: "1 rodada incluída", description: "Rodada extra: 15% do valor da peça." },
+            ],
+          },
+          {
+            name: "Card",
+            price: 0,
+            unit: "/ peça",
+            subtitle: "Peça estática",
+            description: "",
+            items: [
+              { title: "Card", detail: "1 peça", description: "Texto de apoio e 1 adaptação de formato." },
+              { title: "Ajuste", detail: "1 rodada incluída", description: "Rodada extra: 15% do valor da peça." },
+            ],
+          },
+          {
+            name: "Vídeo institucional",
+            price: 0,
+            unit: "/ peça",
+            subtitle: "",
+            description: "",
+            items: [
+              { title: "Vídeo", detail: "1 vídeo", description: "Roteiro, captação, edição e finalização." },
+              { title: "Ajuste", detail: "1 rodada incluída", description: "Rodada extra: 15% do valor da peça." },
+            ],
+          },
+        ],
+        notes: [
+          "Orçamento aprovado por escrito antes de começar.",
+          "Prazos em dias úteis, a partir do briefing aprovado e do sinal pago.",
+        ],
+      },
+    },
+    {
+      kind: "regras",
+      enabled: false,
+      data: {
+        eyebrow: "REGRAS",
+        title: "Como a produção funciona",
+        blocks: [
+          {
+            title: "Ajuste × refação",
+            lines: [
+              "Ajuste (incluído, 1 rodada por entrega): trocar texto, corte, trilha, cor ou ordem das cenas; corrigir erro de informação; ajustar tamanho, posição e fonte.",
+              "Refação ou novo job (cobrado à parte): mudar conceito ou roteiro já aprovado; pedir cenas que não foram captadas; mudar o briefing depois da primeira versão; nova captação.",
+              "Uma rodada é uma única lista consolidada, enviada de uma vez pelo ponto focal. Rodada extra: 15% do valor do item.",
+            ],
+          },
+          {
+            title: "Aprovação",
+            lines: [
+              "Aprovação por escrito no grupo de WhatsApp. Só o ponto focal indicado pelo cliente aprova e pede alterações.",
+              "Sem resposta em 5 dias úteis após a entrega, a peça é considerada aprovada.",
+            ],
           },
         ],
       },

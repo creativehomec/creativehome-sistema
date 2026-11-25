@@ -7,6 +7,7 @@ import {
   TextList,
 } from "@/components/admin/budget/RepeatableList";
 import { LogoLibrary } from "@/components/admin/budget/LogoLibrary";
+import { PackagesFields } from "@/components/admin/budget/PackagesFields";
 import { UploadButton } from "@/components/admin/budget/UploadButton";
 import {
   MAX_BLUR,
@@ -14,6 +15,9 @@ import {
   type ListSectionData,
   type SectionData,
 } from "@/lib/budgetSections";
+
+/** Rótulo pequeno e sempre visível, pros campos de itens repetidos. */
+const MINI = "mb-1 block text-[11px] font-medium text-neutral-600";
 
 /**
  * Os campos de uma seção. Cada kind tem a sua forma, então isto é um switch —
@@ -88,15 +92,6 @@ export function SectionFields({
             </div>
           </Field>
 
-          <Field label="Reel completo (botão Play reel)">
-            <input
-              value={data.reelUrl ?? ""}
-              onChange={(e) => set({ reelUrl: e.target.value })}
-              className={FIELD_CLASS}
-              placeholder="Link do YouTube, Vimeo ou .mp4"
-            />
-          </Field>
-
           <Field label={`Desfoque do fundo — ${data.blur}px`}>
             <input
               type="range"
@@ -156,7 +151,7 @@ export function SectionFields({
               className={FIELD_CLASS}
             />
           </Field>
-          <Field label="Serviços / diferenciais">
+          <Field label="Serviços / diferenciais" grupo>
             <TextList
               items={data.items}
               onChange={(items) => set({ items })}
@@ -216,7 +211,7 @@ export function SectionFields({
               className={FIELD_CLASS}
             />
           </Field>
-          <Field label="Projetos">
+          <Field label="Projetos" grupo>
             <RepeatableList
               items={data.projects}
               onChange={(projects) => set({ projects })}
@@ -232,24 +227,24 @@ export function SectionFields({
             >
               {(projeto, trocar) => (
                 <>
-                  <input
+                  <label className="block"><span className={MINI}>Nome do projeto</span><input
                     value={projeto.name}
                     onChange={(e) => trocar({ ...projeto, name: e.target.value })}
                     className={FIELD_CLASS}
                     placeholder="Nome do projeto"
-                  />
-                  <input
+                  /></label>
+                  <label className="block"><span className={MINI}>Etiqueta</span><input
                     value={projeto.tag}
                     onChange={(e) => trocar({ ...projeto, tag: e.target.value })}
                     className={FIELD_CLASS}
                     placeholder="Etiqueta (ex.: Institucional)"
-                  />
-                  <input
+                  /></label>
+                  <label className="block"><span className={MINI}>Imagem ou vídeo (link)</span><input
                     value={projeto.url}
                     onChange={(e) => trocar({ ...projeto, url: e.target.value })}
                     className={FIELD_CLASS}
                     placeholder="URL da imagem ou vídeo"
-                  />
+                  /></label>
                   <UploadButton
                     budgetId={budgetId}
                     onUploaded={(url) =>
@@ -258,7 +253,7 @@ export function SectionFields({
                     label="Enviar imagem do computador"
                   />
                   <div className="grid grid-cols-2 gap-1.5">
-                    <select
+                    <label className="block"><span className={MINI}>Tipo de mídia</span><select
                       value={projeto.mediaType}
                       onChange={(e) =>
                         trocar({
@@ -271,8 +266,8 @@ export function SectionFields({
                     >
                       <option value="image">Imagem</option>
                       <option value="video">Vídeo</option>
-                    </select>
-                    <select
+                    </select></label>
+                    <label className="block"><span className={MINI}>Formato</span><select
                       value={projeto.orientation}
                       onChange={(e) =>
                         trocar({
@@ -287,7 +282,7 @@ export function SectionFields({
                     >
                       <option value="horizontal">Horizontal</option>
                       <option value="vertical">Vertical</option>
-                    </select>
+                    </select></label>
                   </div>
                 </>
               )}
@@ -320,7 +315,7 @@ export function SectionFields({
               placeholder="Marcas que já colocamos em movimento"
             />
           </Field>
-          <Field label={`Logos — ${data.logos.length} escolhido${data.logos.length === 1 ? "" : "s"}`}>
+          <Field grupo label={`Logos — ${data.logos.length} escolhido${data.logos.length === 1 ? "" : "s"}`}>
             <LogoLibrary
               budgetId={budgetId}
               escolhidos={data.logos}
@@ -336,42 +331,6 @@ export function SectionFields({
               }
             />
           </Field>
-          {data.logos.length > 0 ? (
-            <Field label="Foto ou vídeo de fundo de cada marca (lista animada)">
-              <div className="space-y-2">
-                {data.logos.map((logo, i) => (
-                  <div key={`${logo.url}-${i}`} className="space-y-1.5">
-                    <p className="text-xs font-medium text-neutral-700">
-                      {logo.name || `Marca ${i + 1}`}
-                    </p>
-                    <input
-                      value={logo.photo ?? ""}
-                      onChange={(e) =>
-                        set({
-                          logos: data.logos.map((l, j) =>
-                            j === i ? { ...l, photo: e.target.value } : l
-                          ),
-                        })
-                      }
-                      className={FIELD_CLASS}
-                      placeholder="Link da foto, .mp4, YouTube ou Vimeo (opcional)"
-                    />
-                    <UploadButton
-                      budgetId={budgetId}
-                      onUploaded={(url) =>
-                        set({
-                          logos: data.logos.map((l, j) =>
-                            j === i ? { ...l, photo: url } : l
-                          ),
-                        })
-                      }
-                      label="Enviar foto do computador"
-                    />
-                  </div>
-                ))}
-              </div>
-            </Field>
-          ) : null}
           <p className="text-[11px] leading-relaxed text-neutral-400">
             A biblioteca é a mesma em todas as propostas. Escolha aqui só as
             marcas que conversam com este cliente — sem nenhuma marcada, a seção
@@ -420,74 +379,147 @@ export function SectionFields({
               placeholder="Escolher este pacote"
             />
           </Field>
-          <Field label="Pacotes">
+          <PackagesFields
+            packages={data.packages}
+            onChange={(packages) => set({ packages })}
+            featuredAllowed
+          />
+        </div>
+      );
+    }
+
+    case "avulsos": {
+      const { data } = section;
+      const set = (patch: Partial<SectionData["avulsos"]>) =>
+        onChange({ ...section, data: { ...data, ...patch } });
+
+      return (
+        <div className="space-y-3">
+          <Field label="Etiqueta">
+            <input
+              value={data.eyebrow}
+              onChange={(e) => set({ eyebrow: e.target.value })}
+              className={FIELD_CLASS}
+              placeholder="AVULSOS"
+            />
+          </Field>
+          <Field label="Título">
+            <input
+              value={data.title}
+              onChange={(e) => set({ title: e.target.value })}
+              className={FIELD_CLASS}
+              placeholder="Peças pontuais, orçadas à parte"
+            />
+          </Field>
+          <Field label="Texto de apoio">
+            <textarea
+              value={data.subtitle}
+              onChange={(e) => set({ subtitle: e.target.value })}
+              rows={2}
+              className={FIELD_CLASS}
+            />
+          </Field>
+          <Field label="Texto do botão">
+            <input
+              value={data.cta}
+              onChange={(e) => set({ cta: e.target.value })}
+              className={FIELD_CLASS}
+              placeholder="Solicitar orçamento"
+            />
+          </Field>
+          <PackagesFields
+            packages={data.packages}
+            onChange={(packages) => set({ packages })}
+            featuredAllowed={false}
+          />
+          <Field label="Rodapé (uma linha por item)" grupo>
+            <TextList
+              items={data.notes}
+              onChange={(notes) => set({ notes })}
+              rotulo="linha"
+              placeholder="Orçamento aprovado por escrito antes de começar."
+            />
+          </Field>
+        </div>
+      );
+    }
+
+    case "whyExternal": {
+      const { data } = section;
+      const set = (patch: Partial<SectionData["whyExternal"]>) =>
+        onChange({ ...section, data: { ...data, ...patch } });
+
+      return (
+        <div className="space-y-3">
+          <Field label="Etiqueta">
+            <input
+              value={data.eyebrow}
+              onChange={(e) => set({ eyebrow: e.target.value })}
+              className={FIELD_CLASS}
+            />
+          </Field>
+          <Field label="Título">
+            <input
+              value={data.title}
+              onChange={(e) => set({ title: e.target.value })}
+              className={FIELD_CLASS}
+            />
+          </Field>
+          <Field label="Texto">
+            <textarea
+              value={data.text}
+              onChange={(e) => set({ text: e.target.value })}
+              rows={8}
+              className={FIELD_CLASS}
+              placeholder="Parágrafos separados por linha em branco"
+            />
+          </Field>
+        </div>
+      );
+    }
+
+    case "regras": {
+      const { data } = section;
+      const set = (patch: Partial<SectionData["regras"]>) =>
+        onChange({ ...section, data: { ...data, ...patch } });
+
+      return (
+        <div className="space-y-3">
+          <Field label="Etiqueta">
+            <input
+              value={data.eyebrow}
+              onChange={(e) => set({ eyebrow: e.target.value })}
+              className={FIELD_CLASS}
+            />
+          </Field>
+          <Field label="Título">
+            <input
+              value={data.title}
+              onChange={(e) => set({ title: e.target.value })}
+              className={FIELD_CLASS}
+            />
+          </Field>
+          <Field label="Blocos" grupo>
             <RepeatableList
-              items={data.packages}
-              onChange={(packages) => set({ packages })}
-              rotulo="Pacote"
-              vazio="Nenhum pacote — a seção some e o botão da capa não aparece."
-              novoItem={() => ({
-                name: "",
-                price: 0,
-                subtitle: "",
-                description: "",
-                features: [],
-                featured: false,
-              })}
+              items={data.blocks}
+              onChange={(blocks) => set({ blocks })}
+              rotulo="Bloco"
+              vazio="Nenhum bloco — a seção some."
+              novoItem={() => ({ title: "", lines: [] })}
             >
-              {(pacote, trocar) => (
+              {(bloco, trocar) => (
                 <>
-                  <div className="flex items-center justify-between gap-2">
-                    <input
-                      value={pacote.name}
-                      onChange={(e) => trocar({ ...pacote, name: e.target.value })}
-                      className={FIELD_CLASS}
-                      placeholder="Nome do pacote"
-                    />
-                    <label className="flex shrink-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-neutral-500">
-                      <input
-                        type="checkbox"
-                        checked={pacote.featured}
-                        onChange={(e) =>
-                          trocar({ ...pacote, featured: e.target.checked })
-                        }
-                        className="h-3.5 w-3.5 accent-neutral-900"
-                      />
-                      Destaque
-                    </label>
-                  </div>
                   <input
-                    type="number"
-                    value={pacote.price}
-                    min={0}
-                    step="0.01"
-                    onChange={(e) =>
-                      trocar({ ...pacote, price: Number(e.target.value) || 0 })
-                    }
+                    value={bloco.title}
+                    onChange={(e) => trocar({ ...bloco, title: e.target.value })}
                     className={FIELD_CLASS}
-                    placeholder="Preço"
-                  />
-                  <input
-                    value={pacote.subtitle}
-                    onChange={(e) =>
-                      trocar({ ...pacote, subtitle: e.target.value })
-                    }
-                    className={FIELD_CLASS}
-                    placeholder="Subtítulo (ex.: campeão de vendas)"
-                  />
-                  <input
-                    value={pacote.description}
-                    onChange={(e) =>
-                      trocar({ ...pacote, description: e.target.value })
-                    }
-                    className={FIELD_CLASS}
-                    placeholder="Descrição (ex.: 6 vídeos · diária completa)"
+                    placeholder="Ex.: Ajuste × refação"
                   />
                   <TextList
-                    items={pacote.features}
-                    onChange={(features) => trocar({ ...pacote, features })}
-                    rotulo="item"
-                    placeholder="Direção criativa"
+                    items={bloco.lines}
+                    onChange={(lines) => trocar({ ...bloco, lines })}
+                    rotulo="linha"
+                    placeholder="Uma regra por linha"
                   />
                 </>
               )}
@@ -520,7 +552,7 @@ export function SectionFields({
               placeholder="O que costumam perguntar"
             />
           </Field>
-          <Field label="Perguntas">
+          <Field label="Perguntas" grupo>
             <RepeatableList
               items={data.items}
               onChange={(items) => set({ items })}
@@ -638,7 +670,7 @@ export function SectionFields({
               className={FIELD_CLASS}
             />
           </Field>
-          <Field label="Itens">
+          <Field label="Itens" grupo>
             <TextList
               items={data.items}
               onChange={(items) => set({ items })}

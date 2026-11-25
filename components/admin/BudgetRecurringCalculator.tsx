@@ -57,7 +57,7 @@ export function BudgetRecurringCalculator({
   });
 
   return (
-    <section className="rounded-lg bg-white p-4 shadow-sm">
+    <section className="rounded-lg border border-neutral-200 bg-white p-4">
       <h2 className="mb-1 text-sm font-semibold text-neutral-900">
         Calculadora recorrente (por níveis)
       </h2>
@@ -255,21 +255,13 @@ export function BudgetRecurringCalculator({
             formAction={generatePackagesFromCalcAction}
             onClick={async (event) => {
               if (!hasPackages) return;
-              // Barra o envio, espera a resposta e reenvia pelo mesmo botão.
+              // O envio espera a resposta: barra agora, reenvia se confirmar.
               event.preventDefault();
               const botao = event.currentTarget;
-              const form = botao.form;
-              if (
-                form &&
-                (await confirmar(
-                  "Isso substitui os pacotes fixos que já estão na proposta. Continuar?",
-                  "Substituir"
-                ))
-              ) {
-                form.requestSubmit(botao);
-              }
+              if (await confirmar("Isso substitui os pacotes fixos que já estão na proposta. Continuar?", "Substituir"))
+                botao.form?.requestSubmit(botao);
             }}
-            className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800"
+            className="rounded-md bg-(--brand-ink) px-3 py-1.5 text-xs font-medium text-white hover:bg-(--brand-ink)/90"
           >
             Gerar 3 pacotes (Start / Ideal / Pro)
           </button>

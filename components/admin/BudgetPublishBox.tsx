@@ -1,12 +1,18 @@
+import { headers } from "next/headers";
+import { CopyLinkButton } from "@/components/admin/CopyLinkButton";
 import { setBudgetStatusAction } from "@/app/admin/orcamentos/[id]/actions";
 import type { BudgetWithSections } from "@/lib/budgets";
 
-export function BudgetPublishBox({ budget }: { budget: BudgetWithSections }) {
+export async function BudgetPublishBox({ budget }: { budget: BudgetWithSections }) {
   const isPublished = budget.status === "published";
   const publicPath = `/orcamento/${budget.slug}`;
+  // Link pronto pra colar no WhatsApp do cliente; o host vem do pedido porque
+  // produção e localhost são diferentes.
+  const host = (await headers()).get("host");
+  const publicUrl = `${host?.startsWith("localhost") ? "http" : "https"}://${host}${publicPath}`;
 
   return (
-    <section className="rounded-lg bg-white p-4 shadow-sm">
+    <section className="rounded-lg border border-neutral-200 bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-neutral-900">
@@ -35,7 +41,10 @@ export function BudgetPublishBox({ budget }: { budget: BudgetWithSections }) {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Duas colunas em qualquer largura: o painel do desktop tem só 380px, e
+            quatro botões em fila não cabem. Altura de toque só no celular. */}
+        <div className="grid w-full grid-cols-2 gap-2 [&_a]:flex [&_a]:items-center [&_a]:justify-center [&_a]:text-center [&_a]:min-h-11 [&_button]:min-h-11 lg:[&_a]:min-h-0 lg:[&_button]:min-h-0">
+          {isPublished ? <CopyLinkButton text={publicUrl} /> : null}
           <a
             href={publicPath}
             target="_blank"
@@ -45,12 +54,14 @@ export function BudgetPublishBox({ budget }: { budget: BudgetWithSections }) {
             Ver proposta
           </a>
           <a
-            href={`/api/orcamentos/${budget.slug}/pdf`}
+            href={`${publicPath}?pdf=1`}
+            target="_blank"
+            rel="noreferrer"
             className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
           >
             Baixar PDF
           </a>
-          <form action={setBudgetStatusAction}>
+          <form action={setBudgetStatusAction} className="contents">
             <input type="hidden" name="id" value={budget.id} />
             <input
               type="hidden"
