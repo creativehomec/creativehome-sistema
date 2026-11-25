@@ -40,6 +40,7 @@ export function PortfolioSection({
           const ratio =
             project.orientation === "vertical" ? "aspect-[9/16]" : "aspect-video";
           const imageIndex = images.indexOf(project);
+          if (!project.url.trim()) return null;
 
           return (
             <RevealItem key={`${project.url}-${index}`}>
@@ -50,13 +51,7 @@ export function PortfolioSection({
                     : "border-[var(--brand-ink)]/15"
                 }`}
               >
-                {!project.url.trim() ? (
-                  <div
-                    className={`flex h-full w-full items-center justify-center text-xs ${tone.textMuted}`}
-                  >
-                    Sem imagem
-                  </div>
-                ) : project.mediaType === "video" ? (
+                {project.mediaType === "video" ? (
                   <video
                     className="h-full w-full object-cover"
                     src={project.url}
@@ -78,10 +73,7 @@ export function PortfolioSection({
                 )}
               </div>
               <div className="mt-3 flex items-baseline justify-between gap-3">
-                <p className="flex items-baseline gap-2 text-sm font-bold">
-                  <span className={`text-xs tabular-nums ${tone.textMuted}`}>
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
+                <p className="flex items-baseline gap-2 text-sm font-medium">
                   {project.name || "Sem título"}
                 </p>
                 {project.tag ? (

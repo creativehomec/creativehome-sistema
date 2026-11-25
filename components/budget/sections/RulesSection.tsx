@@ -28,7 +28,7 @@ export function RulesSection({
       <RevealStagger className="grid gap-x-10 gap-y-10 sm:grid-cols-2 pdf:grid-cols-3 pdf:gap-y-8">
         {data.blocks.map((block, index) => (
           <RevealItem key={`${block.title}-${index}`}>
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.16em]">
+            <h3 className="mb-4 text-sm font-medium">
               {block.title}
             </h3>
             <ul className="space-y-3 pdf:space-y-2">

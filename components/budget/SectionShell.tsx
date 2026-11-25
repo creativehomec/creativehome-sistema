@@ -30,17 +30,15 @@ export function SectionHeading({
     <Reveal className={`${className} pdf:mb-8 pdf:break-after-avoid`}>
       {eyebrow ? (
         <div className="mb-6 flex items-center gap-4">
-          <span className="text-xs font-bold tabular-nums">{number}</span>
           <span className={`h-px w-10 ${tone.isDark ? "bg-[var(--brand-cream)]/40" : "bg-[var(--brand-ink)]/30"}`} />
-          <span className={`text-xs font-medium uppercase tracking-[0.2em] ${tone.textMuted}`}>
+          <span className={`text-xs font-medium ${tone.textMuted}`}>
             {eyebrow}
           </span>
         </div>
       ) : null}
       {title ? (
         <h2
-          style={{ fontFamily: "Bootzy, sans-serif" }}
-          className="max-w-3xl text-3xl leading-[1.1] tracking-wide sm:text-5xl"
+                    className="max-w-3xl text-3xl leading-[1.1] tracking-tight sm:text-5xl"
         >
           {title}
         </h2>

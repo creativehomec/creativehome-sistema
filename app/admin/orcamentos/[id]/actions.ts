@@ -249,7 +249,7 @@ export async function generatePackagesFromCalcAction(formData: FormData) {
               {
                 name: "Ideal",
                 price: ideal,
-                subtitle: "campeão de vendas",
+                subtitle: "o mais indicado",
                 description: "",
                 features: [
                   "Gerado pela calculadora",
