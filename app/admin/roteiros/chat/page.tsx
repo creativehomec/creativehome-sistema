@@ -3,6 +3,8 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import ChatRoteiro from "@/components/admin/roteiros/ChatRoteiro";
 import { clientesDoChat } from "@/lib/roteiroContexto";
 
+export const dynamic = "force-dynamic";
+
 export default async function ChatRoteirosPage() {
   return (
     <div className="mx-auto w-full max-w-3xl pb-10">
