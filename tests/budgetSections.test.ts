@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_BLUR,
-  PLACEHOLDER_LOGOS,
   SECTION_KINDS,
   blockTone,
   isEmpty,
@@ -106,9 +105,9 @@ describe("parseSections", () => {
   });
 
   it("descarta a linha vazia que o split de features deixa", () => {
-    const pricing = parseSections(backfilled)[8];
-    if (pricing.kind !== "pricing") throw new Error("kind inesperado");
-    expect(pricing.data.packages[0].features).toEqual([
+    const pricing = parseSections(backfilled).find((s) => s.kind === "pricing");
+    if (pricing?.kind !== "pricing") throw new Error("kind inesperado");
+    expect(pricing.data.packages[0].items.map((i) => i.title)).toEqual([
       "Direção criativa",
       "Captação mensal",
     ]);
@@ -117,25 +116,25 @@ describe("parseSections", () => {
 
   it("completa um orçamento sem a coluna preenchida, tudo desligado", () => {
     const sections = parseSections([]);
-    expect(sections).toHaveLength(11);
+    expect(sections).toHaveLength(14);
     expect(sections.every((s) => !s.enabled)).toBe(true);
   });
 
   it("não quebra com jsonb corrompido", () => {
     for (const lixo of [null, "texto", 42, [{ kind: "inexistente" }], [null]]) {
-      expect(parseSections(lixo)).toHaveLength(11);
+      expect(parseSections(lixo)).toHaveLength(14);
     }
   });
 
   it("joga fora logo sem imagem e pergunta sem texto", () => {
     const sections = parseSections([
       { kind: "logos", enabled: true, data: { logos: [{ name: "A", url: "" }, { name: "B", url: "/b.svg" }] } },
-      { kind: "faq", enabled: true, data: { items: [{ question: "  ", answer: "x" }] } },
+      { kind: "faq", enabled: true, data: { items: [{ question: "  ", answer: "  " }] } },
     ]);
     const logos = sections[3];
-    const faq = sections[9];
+    const faq = sections[12];
     if (logos.kind !== "logos" || faq.kind !== "faq") throw new Error("kind inesperado");
-    expect(logos.data.logos).toEqual([{ name: "B", url: "/b.svg", photo: "" }]);
+    expect(logos.data.logos).toEqual([{ name: "B", url: "/b.svg" }]);
     expect(faq.data.items).toEqual([]);
   });
 });
@@ -247,9 +246,9 @@ describe("capa: mídia de fundo e desfoque", () => {
 });
 
 describe("secoesPadrao", () => {
-  it("entrega as 11 seções, com capa, leitura e rodapé ligados", () => {
+  it("entrega as 14 seções, com capa, leitura e rodapé ligados", () => {
     const padrao = secoesPadrao();
-    expect(padrao).toHaveLength(11);
+    expect(padrao).toHaveLength(14);
     expect(padrao.filter((s) => s.enabled).map((s) => s.kind)).toEqual([
       "cover",
       "about",
@@ -278,10 +277,10 @@ describe("secoesPadrao", () => {
     expect((porKind.faq as { items: unknown[] }).items.length).toBe(3);
     expect((porKind.pricing as { packages: unknown[] }).packages.length).toBe(3);
 
-    // Portfólio depende de arquivo e fica vazio: um item sem mídia seria um
-    // buraco na página. Logos nascem com as empresas de exemplo, que já têm imagem.
+    // Listas que dependem de arquivo ficam vazias: sem imagem não há o que
+    // mostrar, e um item sem mídia seria um buraco na página.
     expect((porKind.portfolio as { projects: unknown[] }).projects).toEqual([]);
-    expect(porKind.logos).toMatchObject({ logos: PLACEHOLDER_LOGOS });
+    expect((porKind.logos as { logos: unknown[] }).logos).toEqual([]);
   });
 
   it("deixa os preços em zero para ninguém publicar um valor de exemplo", () => {
@@ -294,5 +293,19 @@ describe("secoesPadrao", () => {
     const faq = secoesPadrao().find((s) => s.kind === "faq");
     if (faq?.kind !== "faq") throw new Error("kind inesperado");
     expect(faq.data.items.every((i) => i.answer.trim() !== "")).toBe(true);
+  });
+});
+
+describe("preço do pacote", () => {
+  it("nunca fica negativo depois do parse", () => {
+    const secoes = parseSections([
+      {
+        kind: "pricing",
+        enabled: true,
+        data: { packages: [{ name: "A", price: -50 }] },
+      },
+    ]);
+    const pricing = secoes.find((s) => s.kind === "pricing");
+    expect(pricing?.kind === "pricing" && pricing.data.packages[0].price).toBe(0);
   });
 });

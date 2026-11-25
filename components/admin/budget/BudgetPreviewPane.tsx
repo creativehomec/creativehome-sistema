@@ -1,9 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { BudgetSections } from "@/components/budget/BudgetSections";
-import type { BudgetSection } from "@/lib/budgetSections";
+import { visibleSections, type BudgetSection } from "@/lib/budgetSections";
 
 /** A largura em que a proposta é desenhada — o desktop padrão de construção. */
 const LARGURA = 1440;
@@ -61,7 +61,7 @@ export function ZoomControls({
         className="min-w-[4.5rem] rounded-md px-1.5 py-1 text-[11px] font-medium tabular-nums text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:outline-none"
       >
         {Math.round(nivel * 100)}%
-        <span className="ml-1 text-neutral-400">{larguraDaJanela(zoom)}px</span>
+        <span className="ml-1 text-neutral-500">{larguraDaJanela(zoom)}px</span>
       </button>
 
       <ZoomBotao
@@ -99,9 +99,15 @@ export function BudgetPreviewPane({
   sections,
   clientName,
   zoom,
+  focusKind = null,
+  aviso = null,
 }: {
   sections: BudgetSection[];
   clientName: string;
+  /** Seção aberta no painel: a prévia rola até ela. */
+  focusKind?: string | null;
+  /** Mensagem rápida sobre o que acabou de mudar (seção ligada ou desligada). */
+  aviso?: string | null;
   /** null = a janela padrão de 1440. O controle mora na barra do painel. */
   zoom: number | null;
 }) {
@@ -124,6 +130,25 @@ export function BudgetPreviewPane({
     return () => observer.disconnect();
   }, []);
 
+  const janela = useRef<HTMLDivElement>(null);
+
+  // Abrir uma seção no painel leva a prévia até ela. Os filhos da janela são os
+  // blocos na ordem de visibleSections, então o índice dela é o do bloco.
+  useEffect(() => {
+    if (!focusKind) return;
+    const indice = visibleSections(sections).findIndex((s) => s.kind === focusKind);
+    const bloco = janela.current?.children[indice] as HTMLElement | undefined;
+    const caixa = moldura.current;
+    if (!bloco || !caixa) return;
+    const topo =
+      bloco.getBoundingClientRect().top -
+      caixa.getBoundingClientRect().top +
+      caixa.scrollTop;
+    caixa.scrollTo({ top: topo, behavior: "smooth" });
+    // Só quando a seção aberta muda: reagir a `sections` brigaria com quem digita.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusKind]);
+
   const larguraJanela = larguraDaJanela(zoom);
   // Sempre encaixa: a escala é sempre a que faz a janela simulada caber. Antes
   // da primeira medição não há escala que se possa calcular, e renderizar em
@@ -132,7 +157,15 @@ export function BudgetPreviewPane({
   const escala = medida ? caixa.largura / larguraJanela : 1;
 
   return (
-    <div className="h-full">
+    <div className="relative h-full">
+      {aviso ? (
+        <p
+          role="status"
+          className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-medium text-white shadow-lg"
+        >
+          {aviso}
+        </p>
+      ) : null}
       <div
         ref={moldura}
         // A capa mede a altura por --budget-vh: na página é a janela, aqui é a
@@ -142,9 +175,10 @@ export function BudgetPreviewPane({
         // valor é dividido pela escala porque o conteúdo vive no tamanho de
         // antes de encolher.
         style={{ ["--budget-vh" as string]: `${caixa.altura / escala}px` }}
-        className="h-full overflow-y-auto overflow-x-hidden overscroll-contain rounded-lg border border-neutral-200 bg-white"
+        className="h-full overflow-y-auto overflow-x-hidden overscroll-contain rounded-lg border border-neutral-200 bg-neutral-100"
       >
         <div
+          ref={janela}
           style={{
             width: larguraJanela,
             transform: `scale(${escala})`,

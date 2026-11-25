@@ -1,7 +1,6 @@
-import { FadeUp } from "@/components/budget/motion/FadeUp";
-import { ScrollWords } from "@/components/budget/motion/ScrollWords";
+import { brand } from "@/lib/brand";
+import { Reveal } from "@/components/Reveal";
 import type { BlockTone, SectionData } from "@/lib/budgetSections";
-import { brandDisplayFontFamily, brandGeneratedBy } from "@/lib/brand";
 
 /** Só os canais preenchidos viram link — um rodapé com campo vazio fica com
  *  buraco, e a proposta termina mal. */
@@ -35,8 +34,11 @@ export function FooterSection({
   const links = contacts(data);
 
   return (
-    <footer className={`px-4 py-20 sm:px-8 sm:py-24 ${tone.bg} ${tone.text}`}>
-      <div className="mx-auto w-full max-w-5xl">
+    <footer
+      data-slide="fim"
+      className={`px-4 py-20 sm:px-8 sm:py-24 ${tone.bg} ${tone.text}`}
+    >
+      <div data-slide-content className="mx-auto w-full max-w-5xl">
         <div
           className={`flex flex-wrap items-center justify-between gap-2 border-b pb-6 text-xs font-medium uppercase tracking-[0.2em] ${tone.divider} ${tone.textMuted}`}
         >
@@ -45,34 +47,36 @@ export function FooterSection({
         </div>
 
         {data.phrase ? (
-          <ScrollWords
-            style={{ fontFamily: brandDisplayFontFamily }}
-            className="mt-12 max-w-4xl text-4xl leading-[1.05] tracking-wide sm:text-6xl"
-          >
-            {data.phrase}
-          </ScrollWords>
+          <Reveal>
+            <p
+              style={{ fontFamily: "Bootzy, sans-serif" }}
+              className="mt-12 max-w-3xl text-3xl leading-[1.1] tracking-wide sm:text-5xl"
+            >
+              {data.phrase}
+            </p>
+          </Reveal>
         ) : null}
 
         {links.length > 0 ? (
-          <FadeUp>
-            <div className="mt-10 flex flex-wrap gap-3">
+          <Reveal>
+            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3">
               {links.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full border border-current/40 px-6 py-3 text-sm font-bold uppercase tracking-widest"
+                  className="text-sm font-bold underline underline-offset-4"
                 >
                   {link.label}
                 </a>
               ))}
             </div>
-          </FadeUp>
+          </Reveal>
         ) : null}
 
         <p className={`mt-14 text-xs ${tone.textMuted}`}>
-          {brandGeneratedBy}
+          Proposta gerada por {brand.legalName}
         </p>
       </div>
     </footer>

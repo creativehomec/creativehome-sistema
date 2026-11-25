@@ -1,8 +1,6 @@
 import { BrandLogo } from "@/components/BrandLogo";
 import { ScrollHint } from "@/components/ScrollHint";
 import type { BlockTone, SectionData } from "@/lib/budgetSections";
-import { ReelButton } from "@/components/budget/motion/ReelButton";
-import { CoverTitle } from "@/components/budget/motion/CoverTitle";
 
 /**
  * A mídia de fundo da capa: imagem, vídeo de arquivo, YouTube ou Vimeo.
@@ -21,7 +19,7 @@ function HeroBackground({ url, blur }: { url: string; blur: number }) {
   if (/\.(mp4|webm|mov|m4v)($|\?)/i.test(trimmed)) {
     return (
       <video
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover opacity-40"
         style={desfoque}
         autoPlay
         muted
@@ -39,7 +37,7 @@ function HeroBackground({ url, blur }: { url: string; blur: number }) {
 
   let embed = "";
   if (yt) {
-    embed = `https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1&loop=1&playlist=${yt[1]}&controls=0&showinfo=0&playsinline=1&modestbranding=1&rel=0&disablekb=1&iv_load_policy=3`;
+    embed = `https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1&loop=1&playlist=${yt[1]}&controls=0&showinfo=0`;
   } else if (vm) {
     embed = `https://player.vimeo.com/video/${vm[1]}?autoplay=1&muted=1&loop=1&background=1`;
   }
@@ -57,21 +55,18 @@ function HeroBackground({ url, blur }: { url: string; blur: number }) {
         alt=""
         aria-hidden
         style={desfoque}
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover opacity-40"
       />
     );
   }
 
-  // O iframe do YouTube é sempre 16:9 e não tem object-fit. Para cobrir o
-  // quadro ele é esticado até a maior das duas medidas (aspect-video com
-  // min-w/min-h) e centralizado; o que passa da tela é cortado pelo overflow.
   return (
     <iframe
-      className="pointer-events-none absolute left-1/2 top-1/2 aspect-video min-h-full min-w-full -translate-x-1/2 -translate-y-1/2"
+      className="absolute inset-0 h-full w-full opacity-40"
       style={desfoque}
       src={embed}
       frameBorder={0}
-      allow="autoplay; encrypted-media"
+      allow="autoplay"
       title="Vídeo de fundo"
     />
   );
@@ -98,49 +93,56 @@ export function CoverSection({
 
   return (
     <section
+      data-slide="capa"
       // A altura vem de --budget-vh para a capa caber no espaço que tem: na
       // página é a janela, e dentro do preview do editor é a altura do painel.
       className={`relative flex min-h-[var(--budget-vh,100svh)] flex-col overflow-hidden px-4 py-8 sm:px-8 sm:py-10 ${tone.bg} ${tone.text}`}
     >
       <HeroBackground url={midia} blur={data.blur ?? 0} />
-      {midia ? <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/40" /> : null}
+      {midia ? <div className="absolute inset-0 bg-black/50" /> : null}
 
       <div className="relative mx-auto w-full max-w-5xl">
         <BrandLogo className="h-8 w-auto" />
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center text-center">
+      <div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center">
         {data.eyebrow ? (
-          <p className="mb-6 text-xs font-bold uppercase tracking-[0.3em] opacity-80">
+          <p
+            className={`mb-6 inline-flex w-fit border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.2em] ${
+              tone.isDark
+                ? "border-[var(--brand-cream)]/30"
+                : "border-[var(--brand-ink)]/25"
+            }`}
+          >
             {data.eyebrow}
           </p>
         ) : null}
 
-        <CoverTitle>{data.title}</CoverTitle>
+        <h1
+          style={{ fontFamily: "Bootzy, sans-serif" }}
+          className="mb-6 text-5xl leading-[0.95] tracking-wide sm:text-8xl"
+        >
+          {data.title}
+        </h1>
 
         {data.subtitle ? (
-          <p className={`mb-10 max-w-xl text-base leading-relaxed ${tone.textMuted}`}>
+          <p className={`mb-10 max-w-lg text-base leading-relaxed ${tone.textMuted}`}>
             {data.subtitle}
           </p>
         ) : null}
 
-        <div className="flex flex-wrap justify-center gap-3">
-          {hasPricing && data.cta ? (
-            <a
-              href="#pacotes"
-              className="inline-block w-fit rounded-full bg-[var(--brand-ink)] px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-[var(--brand-cream)]"
-            >
-              {data.cta} ↓
-            </a>
-          ) : null}
-          <ReelButton
-            url={(data.reelUrl ?? "").trim()}
-            className="inline-block w-fit rounded-full border border-current/50 px-7 py-3.5 text-sm font-bold uppercase tracking-widest"
-          />
-        </div>
+        {hasPricing && data.cta ? (
+          <a
+            href="#pacotes"
+            // No PDF a seta "↓" não leva a lugar nenhum: o slide seguinte já é a proposta.
+            className="inline-block w-fit pdf:hidden bg-[var(--brand-ink)] px-7 py-3.5 text-sm font-bold uppercase tracking-widest text-[var(--brand-cream)]"
+          >
+            {data.cta} ↓
+          </a>
+        ) : null}
       </div>
 
-      <ScrollHint className={tone.text} />
+      <ScrollHint className={`${tone.text} pdf:hidden`} />
     </section>
   );
 }

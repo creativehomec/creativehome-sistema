@@ -1,12 +1,1 @@
-{
-  "version": "0.0.1",
-  "configurations": [
-    {
-      "name": "creativehome-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3001,
-      "autoPort": true
-    }
-  ]
-}
+{"version":"0.0.1","configurations":[{"name":"orcamento","runtimeExecutable":"npm","runtimeArgs":["run","dev","--","-p","3007"],"port":3007}]}
